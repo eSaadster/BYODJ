@@ -238,6 +238,12 @@ button:disabled {
   color: #fff;
 }
 
+/* Send doubles as the agent abort button while a task runs */
+#send-btn.running {
+  border-color: var(--pink, #ff2e88);
+  color: var(--pink, #ff2e88);
+}
+
 /* cells are buttons too — undo pill styles for them */
 .cell {
   text-transform: none;

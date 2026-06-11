@@ -31,11 +31,18 @@ You: "dark techno, 140bpm, aggressive"
 
 1. Open `index.html` in a browser (no build step, no server needed)
 2. In the **LLM Config** panel, enter your Base URL (any OpenAI-compatible endpoint, e.g. `https://api.openai.com/v1`), API key, and model ID (e.g. `gpt-4o-mini`)
-3. Click **Connect** — the endpoint must allow browser CORS
-4. Type an instruction in **Talk to the DJ** (e.g. *"dark techno, 140bpm, aggressive"*) and hit **Send** (or Ctrl/Cmd+Enter)
-5. Watch the agent program the grid, set the controls, and hit Play — follow along in the **Agent Status** panel
+3. Pick a **DJ Mode** (see below) and click **Connect** — the endpoint must allow browser CORS
+4. Type an instruction in **Talk to the DJ** (e.g. *"dark techno, 140bpm, aggressive"*) and hit **Send** (or Ctrl/Cmd+Enter); the button becomes **Stop** while the agent runs
+5. Watch the agent work — follow along in the **Agent Status** panel
 
 No backend. No build step. No API costs from us.
+
+### DJ Modes
+
+- **Composer (default)** — the agent gets a custom `set_composition` tool plus a full map of the page, designs the whole piece up front, and applies it in **one tool call** (tempo, scale, waveform, effects, and the entire grid), then playback starts. Fast and cheap: typically 2 LLM round trips. No screen overlay, no floating panel.
+- **Theater** — the original spectacle: the agent reads the DOM and clicks every cell, drags every slider one action at a time while its floating panel narrates. Slow, expensive, mesmerizing. Great for demos.
+
+Both modes share the same synth; switching the dropdown reconnects the agent automatically.
 
 ### Manual mode
 

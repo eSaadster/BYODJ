@@ -41,6 +41,13 @@
     'OpenHat', 'LeadRoot', 'LeadThird', 'LeadFifth'
   ];
 
+  // Row keys accepted by applyComposition()'s pattern object, index-aligned
+  // with the grid rows.
+  var ROW_KEYS = [
+    'kick', 'bass', 'snare', 'closedHat',
+    'openHat', 'leadRoot', 'leadThird', 'leadFifth'
+  ];
+
   // ---------------------------------------------------------- state
 
   // grid[row][step] = boolean
@@ -257,6 +264,37 @@
     if (output) output.value = input.value;
   }
 
+  // Programmatically set a range input through its normal input event so the
+  // existing wiring updates the audio engine, <output>, and serialized value
+  // attribute together. Returns the (clamped) applied value, or null if the
+  // control is missing.
+  function setRangeControl(id, v) {
+    var input = document.getElementById(id);
+    if (!input) return null;
+    var min = parseFloat(input.min);
+    var max = parseFloat(input.max);
+    if (!isNaN(min)) v = Math.max(min, v);
+    if (!isNaN(max)) v = Math.min(max, v);
+    input.value = String(v);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return parseFloat(input.value);
+  }
+
+  // Returns the value if applied, null if the control is missing, undefined
+  // if the value is not one of the select's options.
+  function setSelectControl(id, v) {
+    var sel = document.getElementById(id);
+    if (!sel) return null;
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === v) {
+        sel.value = v;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        return v;
+      }
+    }
+    return undefined;
+  }
+
   function wireSelect(id, handler) {
     var sel = document.getElementById(id);
     if (!sel) {
@@ -430,6 +468,98 @@
     setRootNote: function (name) {
       if (typeof name === 'string' && name) currentRoot = name;
       // Notes are computed lazily at trigger time.
+    },
+
+    // One-shot composition apply, used by the agent's set_composition tool in
+    // composer mode. Drives the same DOM controls a human would, so outputs,
+    // serialized attributes, and the audio engine stay in sync. All fields
+    // are optional; pattern rows that are present replace that row entirely,
+    // absent rows are left untouched.
+    applyComposition: function (comp) {
+      if (!initialized) {
+        return { ok: false, error: 'Synth not initialized (is Tone.js loaded?)' };
+      }
+      if (!comp || typeof comp !== 'object' || Array.isArray(comp)) {
+        return { ok: false, error: 'Composition must be a JSON object' };
+      }
+
+      var applied = [];
+      var warnings = [];
+
+      function slider(id, v, label) {
+        if (v === undefined || v === null) return;
+        if (typeof v !== 'number' || !isFinite(v)) {
+          warnings.push(label + ': not a number, ignored');
+          return;
+        }
+        var set = setRangeControl(id, v);
+        if (set === null) warnings.push(label + ': control missing');
+        else applied.push(label + '=' + set);
+      }
+
+      function select(id, v, label) {
+        if (v === undefined || v === null) return;
+        var set = setSelectControl(id, String(v));
+        if (set === null) warnings.push(label + ': control missing');
+        else if (set === undefined) warnings.push(label + ': "' + v + '" is not a valid option, ignored');
+        else applied.push(label + '=' + set);
+      }
+
+      if (comp.clearFirst) {
+        api.clearGrid();
+        applied.push('grid cleared');
+      }
+
+      if (comp.pattern && typeof comp.pattern === 'object' && !Array.isArray(comp.pattern)) {
+        for (var r = 0; r < NUM_ROWS; r++) {
+          var steps = comp.pattern[ROW_KEYS[r]];
+          if (steps === undefined || steps === null) continue;
+          if (!Array.isArray(steps)) {
+            warnings.push('pattern.' + ROW_KEYS[r] + ': expected an array of step numbers 0-15');
+            continue;
+          }
+          for (var s = 0; s < NUM_STEPS; s++) grid[r][s] = false;
+          var count = 0;
+          for (var i = 0; i < steps.length; i++) {
+            var st = steps[i];
+            if (typeof st === 'number' && st === Math.floor(st) && st >= 0 && st < NUM_STEPS) {
+              grid[r][st] = true;
+              count++;
+            } else {
+              warnings.push('pattern.' + ROW_KEYS[r] + ': step ' + JSON.stringify(st) + ' is not an integer 0-15, ignored');
+            }
+          }
+          applied.push(ROW_KEYS[r] + ' ' + count + ' steps');
+        }
+        var unknown = Object.keys(comp.pattern).filter(function (k) {
+          return ROW_KEYS.indexOf(k) === -1;
+        });
+        if (unknown.length) {
+          warnings.push('unknown pattern rows ignored: ' + unknown.join(', ') + ' (valid rows: ' + ROW_KEYS.join(', ') + ')');
+        }
+        syncAllCells();
+      }
+
+      slider('tempo-slider', comp.tempo, 'tempo');
+      slider('filter-cutoff', comp.filterCutoff, 'filterCutoff');
+      slider('filter-resonance', comp.filterResonance, 'filterResonance');
+      if (comp.envelope && typeof comp.envelope === 'object') {
+        slider('env-attack', comp.envelope.attack, 'attack');
+        slider('env-decay', comp.envelope.decay, 'decay');
+        slider('env-sustain', comp.envelope.sustain, 'sustain');
+        slider('env-release', comp.envelope.release, 'release');
+      }
+      slider('reverb-wet', comp.reverb, 'reverb');
+      slider('delay-wet', comp.delay, 'delay');
+      slider('distortion-amount', comp.distortion, 'distortion');
+
+      select('waveform-select', comp.waveform, 'waveform');
+      select('scale-select', comp.scale, 'scale');
+      select('root-select', comp.root, 'root');
+
+      var playPromise = (comp.play !== false) ? api.play() : null;
+
+      return { ok: true, applied: applied, warnings: warnings, playPromise: playPromise };
     }
   };
 
