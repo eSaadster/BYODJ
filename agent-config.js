@@ -355,46 +355,40 @@ WORKFLOW:
       this.hidePanelIfComposer();
 
       // ---- Live thought process: historychange -> status regions ----------
+      // page-agent can push several history entries per notification (e.g. an
+      // 'error' with the failure reason immediately followed by a 'retry'),
+      // so walk everything new instead of only reading the last entry.
+      this._histIdx = 0;
       if (typeof this.agent.addEventListener === 'function') {
         this.agent.addEventListener('historychange', function () {
           try {
             var history = self.agent && self.agent.history;
-            if (!history || !history.length) return;
-            var last = (typeof history.at === 'function')
-              ? history.at(-1)
-              : history[history.length - 1];
-            if (!last) return;
-
-            if (last.type === 'step') {
-              var refl = last.reflection || {};
-              setStatusText('status-eval', refl.evaluation_previous_goal);
-              setStatusText('status-memory', refl.memory);
-              setStatusText('status-goal', refl.next_goal);
-              var action = last.action || {};
-              var inputStr = '';
-              try {
-                inputStr = JSON.stringify(action.input);
-              } catch (e) {
-                inputStr = String(action.input);
+            if (!history) return;
+            for (var i = self._histIdx; i < history.length; i++) {
+              var entry = history[i];
+              if (!entry) continue;
+              if (entry.type === 'step') {
+                var refl = entry.reflection || {};
+                setStatusText('status-eval', refl.evaluation_previous_goal);
+                setStatusText('status-memory', refl.memory);
+                setStatusText('status-goal', refl.next_goal);
+                var action = entry.action || {};
+                var inputStr = '';
+                try {
+                  inputStr = JSON.stringify(action.input);
+                } catch (e) {
+                  inputStr = String(action.input);
+                }
+                self.log('Step ' + entry.stepIndex + ': ' + action.name + ' ' + String(inputStr).slice(0, 120));
+              } else if (entry.type === 'error') {
+                self.log('Error: ' + String(entry.message).slice(0, 400));
+              } else if (entry.type === 'retry') {
+                self.log('Retrying LLM request (attempt ' + entry.attempt + '/' + entry.maxAttempts + ')…');
               }
-              self.log('Step ' + last.stepIndex + ': ' + action.name + ' ' + String(inputStr).slice(0, 120));
-            } else if (last.type === 'error') {
-              self.log('Error: ' + last.message);
             }
+            self._histIdx = history.length;
           } catch (e) {
             self.log('Status update error: ' + (e && e.message ? e.message : e));
-          }
-        });
-
-        // Transient activity: surface retries (rate limits, flaky endpoints).
-        this.agent.addEventListener('activity', function (event) {
-          try {
-            var detail = event && event.detail;
-            if (detail && detail.type === 'retrying') {
-              self.log('Retrying LLM request (attempt ' + detail.attempt + '/' + detail.maxAttempts + ')…');
-            }
-          } catch (e) {
-            /* transient feedback only — never fatal */
           }
         });
 
