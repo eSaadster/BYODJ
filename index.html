@@ -145,11 +145,18 @@
         <label for="llm-model">Model ID</label>
         <input type="text" id="llm-model" aria-label="LLM Model ID" placeholder="gpt-4o-mini">
       </div>
+      <div class="control">
+        <label for="mode-select">DJ Mode</label>
+        <select id="mode-select" aria-label="DJ Mode">
+          <option value="composer" selected>Composer (one-shot, fast)</option>
+          <option value="theater">Theater (watch it click)</option>
+        </select>
+      </div>
       <div class="control control-btn">
         <button id="connect-btn" aria-label="Connect LLM">Connect</button>
       </div>
     </div>
-    <p class="hint">Endpoint must allow browser CORS. Your API key is saved in this browser's localStorage so it survives reloads &mdash; do not use on shared machines.</p>
+    <p class="hint">Endpoint must allow browser CORS. Your API key is saved in this browser's localStorage so it survives reloads &mdash; do not use on shared machines. <strong>Composer</strong> mode applies the whole composition in one tool call (fast, no overlay); <strong>Theater</strong> mode shows the agent clicking every control, with its floating panel and page mask visible.</p>
   </section>
 
   <section id="chat-panel">
