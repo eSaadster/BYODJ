@@ -24,6 +24,85 @@
     </div>
   </section>
 
+  <section id="mixer-panel">
+    <h2>Mixer</h2>
+    <div class="mixer-grid">
+
+      <div class="mixer-strip">
+        <label for="level-kick">Kick Vol (dB)</label>
+        <input type="range" id="level-kick" aria-label="Kick Vol (dB)" min="-24" max="6" step="1" value="0">
+        <output id="level-kick-value" class="val" for="level-kick">0</output>
+        <button id="mute-kick" class="mute-btn" aria-label="Mute Kick" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+      <div class="mixer-strip">
+        <label for="level-bass">Bass Vol (dB)</label>
+        <input type="range" id="level-bass" aria-label="Bass Vol (dB)" min="-24" max="6" step="1" value="0">
+        <output id="level-bass-value" class="val" for="level-bass">0</output>
+        <button id="mute-bass" class="mute-btn" aria-label="Mute Bass" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+      <div class="mixer-strip">
+        <label for="level-snare">Snare Vol (dB)</label>
+        <input type="range" id="level-snare" aria-label="Snare Vol (dB)" min="-24" max="6" step="1" value="0">
+        <output id="level-snare-value" class="val" for="level-snare">0</output>
+        <button id="mute-snare" class="mute-btn" aria-label="Mute Snare" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+      <div class="mixer-strip">
+        <label for="level-hats">Hats Vol (dB)</label>
+        <input type="range" id="level-hats" aria-label="Hats Vol (dB)" min="-24" max="6" step="1" value="0">
+        <output id="level-hats-value" class="val" for="level-hats">0</output>
+        <button id="mute-hats" class="mute-btn" aria-label="Mute Hats" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+      <div class="mixer-strip">
+        <label for="level-lead">Lead Vol (dB)</label>
+        <input type="range" id="level-lead" aria-label="Lead Vol (dB)" min="-24" max="6" step="1" value="0">
+        <output id="level-lead-value" class="val" for="level-lead">0</output>
+        <button id="mute-lead" class="mute-btn" aria-label="Mute Lead" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="master-panel">
+    <h2>Master &amp; Groove</h2>
+    <div class="controls-grid">
+
+      <div class="control">
+        <label for="master-volume">Master Vol (dB)</label>
+        <input type="range" id="master-volume" aria-label="Master Vol (dB)" min="-36" max="6" step="1" value="0">
+        <output id="master-volume-value" class="val" for="master-volume">0</output>
+      </div>
+
+      <div class="control">
+        <label for="dj-filter">DJ Filter</label>
+        <input type="range" id="dj-filter" aria-label="DJ Filter" min="-100" max="100" step="1" value="0">
+        <output id="dj-filter-value" class="val" for="dj-filter">0</output>
+      </div>
+
+      <div class="control">
+        <label for="pump-amount">Pump (0 to 1)</label>
+        <input type="range" id="pump-amount" aria-label="Pump (0 to 1)" min="0" max="1" step="0.01" value="0">
+        <output id="pump-amount-value" class="val" for="pump-amount">0</output>
+      </div>
+
+      <div class="control">
+        <label for="crush-amount">Bitcrush (0 to 1)</label>
+        <input type="range" id="crush-amount" aria-label="Bitcrush (0 to 1)" min="0" max="1" step="0.01" value="0">
+        <output id="crush-amount-value" class="val" for="crush-amount">0</output>
+      </div>
+
+      <div class="control">
+        <label for="swing-amount">Swing (0 to 0.5)</label>
+        <input type="range" id="swing-amount" aria-label="Swing (0 to 0.5)" min="0" max="0.5" step="0.01" value="0">
+        <output id="swing-amount-value" class="val" for="swing-amount">0</output>
+      </div>
+
+    </div>
+  </section>
+
   <section id="controls-panel">
     <h2>Controls</h2>
     <div class="controls-grid">
@@ -95,6 +174,9 @@
           <option value="square">square</option>
           <option value="sawtooth" selected>sawtooth</option>
           <option value="triangle">triangle</option>
+          <option value="fatsawtooth">fatsawtooth</option>
+          <option value="fatsquare">fatsquare</option>
+          <option value="fattriangle">fattriangle</option>
         </select>
       </div>
 
@@ -106,6 +188,10 @@
           <option value="dorian">dorian</option>
           <option value="phrygian">phrygian</option>
           <option value="pentatonic">pentatonic</option>
+          <option value="lydian">lydian</option>
+          <option value="mixolydian">mixolydian</option>
+          <option value="harmonicMinor">harmonicMinor</option>
+          <option value="blues">blues</option>
         </select>
       </div>
 
@@ -125,6 +211,63 @@
           <option value="A#">A#</option>
           <option value="B">B</option>
         </select>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="sound-panel">
+    <h2>Sound Design</h2>
+    <div class="controls-grid">
+
+      <div class="control">
+        <label for="drum-kit">Drum Kit</label>
+        <select id="drum-kit" aria-label="Drum Kit">
+          <option value="analog" selected>analog</option>
+          <option value="808">808</option>
+          <option value="909">909</option>
+          <option value="lofi">lofi</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="bass-style">Bass Style</label>
+        <select id="bass-style" aria-label="Bass Style">
+          <option value="sub" selected>sub</option>
+          <option value="saw">saw</option>
+          <option value="acid">acid</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="lead-octave">Lead Octave</label>
+        <select id="lead-octave" aria-label="Lead Octave">
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="lead-notelen">Lead Note Length</label>
+        <select id="lead-notelen" aria-label="Lead Note Length">
+          <option value="16n" selected>16n</option>
+          <option value="8n">8n</option>
+          <option value="4n">4n</option>
+          <option value="2n">2n</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="glide-amount">Glide (seconds)</label>
+        <input type="range" id="glide-amount" aria-label="Glide (seconds)" min="0" max="0.3" step="0.005" value="0">
+        <output id="glide-amount-value" class="val" for="glide-amount">0</output>
+      </div>
+
+      <div class="control">
+        <label for="chorus-wet">Chorus (0 to 1)</label>
+        <input type="range" id="chorus-wet" aria-label="Chorus (0 to 1)" min="0" max="1" step="0.01" value="0">
+        <output id="chorus-wet-value" class="val" for="chorus-wet">0</output>
       </div>
 
     </div>

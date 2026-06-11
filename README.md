@@ -29,7 +29,7 @@ You: "dark techno, 140bpm, aggressive"
 
 ## Setup
 
-1. Open `index.html` in a browser (no build step, no server needed)
+1. Open `index.html` in a browser (no build step, no server needed). One caveat: the **Bitcrush** effect uses an AudioWorklet, which browsers refuse to load from `file://` — it is automatically disabled in that case. To enable it, serve the folder instead (e.g. `python3 -m http.server`, then open `http://localhost:8000`)
 2. In the **LLM Config** panel, enter your Base URL (any OpenAI-compatible endpoint, e.g. `https://api.openai.com/v1`), API key, and model ID (e.g. `gpt-4o-mini`)
 3. Pick a **DJ Mode** (see below) and click **Connect** — the endpoint must allow browser CORS
 4. Type an instruction in **Talk to the DJ** (e.g. *"dark techno, 140bpm, aggressive"*) and hit **Send** (or Ctrl/Cmd+Enter); the button becomes **Stop** while the agent runs
@@ -64,9 +64,12 @@ Built and working. See [PLAN.md](./PLAN.md) for full architecture.
 
 What's in the box:
 
-- **16-step × 8-row sequencer** — Kick, Bass, Snare, Closed/Open Hat, plus three melodic lead rows (root/third/fifth) that follow the selected scale and root
+- **16-step × 10-row sequencer** — Kick, Bass, Snare, Closed/Open Hat, plus five melodic lead rows (root/third/fifth/seventh/octave) that follow the selected scale and root
 - **Transport** — Play, Stop, Clear, Random
-- **Synth controls** — tempo (60–200 BPM), lowpass filter cutoff + resonance, full ADSR envelope, reverb, delay, distortion, lead waveform (sine/square/sawtooth/triangle), scale (major/minor/dorian/phrygian/pentatonic), root note
+- **Synth controls** — tempo (60–200 BPM), lowpass filter cutoff + resonance, full ADSR envelope, reverb, delay, distortion, lead waveform (sine/square/sawtooth/triangle plus fat detuned fatsawtooth/fatsquare/fattriangle), scale (major/minor/dorian/phrygian/lydian/mixolydian/harmonicMinor/blues/pentatonic), root note
+- **Mixer** — per-channel volume (dB) and mute for Kick, Bass, Snare, Hats, Lead — mutes are the drop/breakdown tool, patterns are kept
+- **Master & Groove** — master volume, bipolar DJ filter sweep (lowpass ↔ highpass), sidechain pump (mix ducks on every kick), bitcrush, swing — all through a fixed glue compressor and always-on limiter so nothing clips
+- **Sound Design** — drum kits (analog/808/909/lofi), bass styles (sub/saw/acid), lead octave and note length, glide (303-style bass slides), chorus
 - **LLM Config panel** — bring any OpenAI-compatible endpoint; credentials persist in localStorage
-- **Agent integration** — PageAgent drives the actual UI (clicks cells, sets sliders, picks dropdowns) with a music-theory-aware system prompt, and always hits Play so you hear the result
+- **Agent integration** — PageAgent drives the actual UI (clicks cells, sets sliders, picks dropdowns) with a music-theory-aware system prompt, and always hits Play so you hear the result. Both DJ modes know every new control: Theater's prompt maps the mixer, master/groove, and sound-design panels, and Composer's `set_composition` schema exposes them as fields (`mixer`, `swing`, `drumKit`, `bassStyle`, `pump`, `djFilter`, …) — each with a genre cheatsheet (house/techno/lofi/trap/synthwave/ambient) so "make it house" actually swings
 - **Agent Status panel** — live view of the agent's evaluation, memory, next goal, and a step-by-step action log

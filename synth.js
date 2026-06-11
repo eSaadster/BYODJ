@@ -9,43 +9,53 @@
 
   // ---------------------------------------------------------- constants
 
-  var NUM_ROWS = 8;
+  var NUM_ROWS = 10;
   var NUM_STEPS = 16;
 
   var ROW_NAMES = [
     'Kick', 'Bass', 'Snare', 'Closed Hat',
-    'Open Hat', 'Lead Root', 'Lead Third', 'Lead Fifth'
+    'Open Hat', 'Lead Root', 'Lead Third', 'Lead Fifth',
+    'Lead 7th', 'Lead Oct'
   ];
 
   // Per-row probability that a cell turns on in randomizeGrid()
-  var RANDOM_PROBS = [0.25, 0.25, 0.2, 0.5, 0.15, 0.25, 0.25, 0.25];
+  var RANDOM_PROBS = [0.25, 0.25, 0.2, 0.5, 0.15, 0.25, 0.25, 0.25, 0.15, 0.12];
 
   var SCALES = {
-    major:      [0, 2, 4, 5, 7, 9, 11],
-    minor:      [0, 2, 3, 5, 7, 8, 10],
-    dorian:     [0, 2, 3, 5, 7, 9, 10],
-    phrygian:   [0, 1, 3, 5, 7, 8, 10],
-    pentatonic: [0, 3, 5, 7, 10]
+    major:         [0, 2, 4, 5, 7, 9, 11],
+    minor:         [0, 2, 3, 5, 7, 8, 10],
+    dorian:        [0, 2, 3, 5, 7, 9, 10],
+    phrygian:      [0, 1, 3, 5, 7, 8, 10],
+    lydian:        [0, 2, 4, 6, 7, 9, 11],
+    mixolydian:    [0, 2, 4, 5, 7, 9, 10],
+    harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+    blues:         [0, 3, 5, 6, 7, 10],
+    pentatonic:    [0, 3, 5, 7, 10]
   };
 
   // Melodic rows -> scale degree (index into the scale's interval array).
-  // 7-note scales: index 2 = third, index 4 = fifth.
-  var ROW_DEGREE = { 5: 0, 6: 2, 7: 4 };
-  // Pentatonic [0,3,5,7,10]: index 1 = 3 semitones (third), index 3 = 7 (fifth).
-  var ROW_DEGREE_PENTA = { 5: 0, 6: 1, 7: 3 };
+  // 7-note scales: index 2 = third, 4 = fifth, 6 = seventh, 7 wraps to +12.
+  var ROW_DEGREE = { 5: 0, 6: 2, 7: 4, 8: 6, 9: 7 };
+  // Pentatonic [0,3,5,7,10]: 1 = third-ish, 3 = fifth, 4 = seventh, 5 = +12.
+  var ROW_DEGREE_PENTA = { 5: 0, 6: 1, 7: 3, 8: 4, 9: 5 };
+  // Blues [0,3,5,6,7,10]: 1 = b3, 4 = fifth, 5 = b7, 6 wraps to +12.
+  var ROW_DEGREE_BLUES = { 5: 0, 6: 1, 7: 4, 8: 5, 9: 6 };
 
   // Short names used in aria-labels — must stay <= 20 chars total per label
   // ("{name} step {s}") because page-agent truncates attribute values at 20.
   var ROW_LABEL_NAMES = [
     'Kick', 'Bass', 'Snare', 'ClosedHat',
-    'OpenHat', 'LeadRoot', 'LeadThird', 'LeadFifth'
+    'OpenHat', 'LeadRoot', 'LeadThird', 'LeadFifth',
+    'LeadSeventh', 'LeadHigh'
   ];
 
   // Row keys accepted by applyComposition()'s pattern object, index-aligned
-  // with the grid rows.
+  // with the grid rows. (Row 9 is 'leadHigh', not 'leadOctave', to avoid
+  // colliding with the top-level leadOctave composition field.)
   var ROW_KEYS = [
     'kick', 'bass', 'snare', 'closedHat',
-    'openHat', 'leadRoot', 'leadThird', 'leadFifth'
+    'openHat', 'leadRoot', 'leadThird', 'leadFifth',
+    'leadSeventh', 'leadHigh'
   ];
 
   // ---------------------------------------------------------- state
@@ -66,8 +76,50 @@
   // Tone nodes (created in init)
   var kick, bass, snare, hatClosed, hatOpen, poly;
   var filter, dist, delay, reverb;
+  var bassSaw, bassAcid, chorus, pumpGain, crusher, djHP, djLP;
+  var comp, masterVol, limiter;
+  var channels = {};         // kick|bass|snare|hats|lead -> Tone.Channel
   var repeatId = null;
   var initialized = false;
+
+  // Performance / sound-design state (read at trigger time)
+  var pumpAmount = 0;
+  var bassStyle = 'sub';     // 'sub' | 'saw' | 'acid'
+  var kickNote = 'C1';       // re-voiced by setDrumKit()
+  var leadNoteLen = '16n';   // '16n' | '8n' | '4n' | '2n'
+  var leadOct = '4';         // '3' | '4' | '5'
+
+  // Drum-kit voicing bundles applied via .set() — nodes are never rebuilt.
+  var DRUM_KITS = {
+    analog: {
+      kick: { pitchDecay: 0.05, octaves: 6, envelope: { decay: 0.4, release: 1.4 } },
+      kickNote: 'C1',
+      snare: { noise: { type: 'white' }, envelope: { decay: 0.2 } },
+      hatClosed: { noise: { type: 'white' }, envelope: { decay: 0.05 } },
+      hatOpen: { noise: { type: 'white' }, envelope: { decay: 0.3 } }
+    },
+    '808': {
+      kick: { pitchDecay: 0.1, octaves: 8, envelope: { decay: 0.8, release: 1.8 } },
+      kickNote: 'A0',
+      snare: { noise: { type: 'pink' }, envelope: { decay: 0.25 } },
+      hatClosed: { noise: { type: 'white' }, envelope: { decay: 0.03 } },
+      hatOpen: { noise: { type: 'white' }, envelope: { decay: 0.5 } }
+    },
+    '909': {
+      kick: { pitchDecay: 0.03, octaves: 5, envelope: { decay: 0.3, release: 1.0 } },
+      kickNote: 'C1',
+      snare: { noise: { type: 'white' }, envelope: { decay: 0.15 } },
+      hatClosed: { noise: { type: 'white' }, envelope: { decay: 0.06 } },
+      hatOpen: { noise: { type: 'white' }, envelope: { decay: 0.25 } }
+    },
+    lofi: {
+      kick: { pitchDecay: 0.08, octaves: 4, envelope: { decay: 0.3, release: 0.8 } },
+      kickNote: 'C1',
+      snare: { noise: { type: 'pink' }, envelope: { decay: 0.12 } },
+      hatClosed: { noise: { type: 'pink' }, envelope: { decay: 0.04 } },
+      hatOpen: { noise: { type: 'pink' }, envelope: { decay: 0.2 } }
+    }
+  };
 
   // ---------------------------------------------------------- helpers
 
@@ -93,12 +145,14 @@
   }
 
   function noteForRow(r) {
-    var degrees = (currentScale === 'pentatonic') ? ROW_DEGREE_PENTA : ROW_DEGREE;
+    var degrees = (currentScale === 'blues') ? ROW_DEGREE_BLUES
+      : (currentScale === 'pentatonic') ? ROW_DEGREE_PENTA
+      : ROW_DEGREE;
     var d = degrees[r];
     var intervals = SCALES[currentScale] || SCALES.minor;
     var semitones = intervals[d % intervals.length] +
       12 * Math.floor(d / intervals.length);
-    return Tone.Frequency(currentRoot + '4').transpose(semitones).toNote();
+    return Tone.Frequency(currentRoot + leadOct).transpose(semitones).toNote();
   }
 
   function clearPlayhead() {
@@ -153,7 +207,7 @@
       }
     }
 
-    // One delegated click listener for all 128 cells
+    // One delegated click listener for all 160 cells
     container.addEventListener('click', function (ev) {
       var target = ev.target;
       if (!(target instanceof Element)) return;
@@ -173,34 +227,60 @@
       pitchDecay: 0.05,
       octaves: 6,
       envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 }
-    }).toDestination();
+    });
 
+    // Membrane "sub" bass — one of three switchable bass voices (bassStyle).
     bass = new Tone.MembraneSynth({
       pitchDecay: 0.08,
       octaves: 2,
       envelope: { attack: 0.001, decay: 0.5, sustain: 0.1, release: 0.8 }
-    }).toDestination();
+    });
+
+    bassSaw = new Tone.MonoSynth({
+      oscillator: { type: 'sawtooth' },
+      volume: -4,
+      portamento: 0,
+      envelope: { attack: 0.005, decay: 0.2, sustain: 0.6, release: 0.2 },
+      filterEnvelope: {
+        attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.3,
+        baseFrequency: 200, octaves: 3
+      }
+    });
+
+    bassAcid = new Tone.MonoSynth({
+      oscillator: { type: 'square' },
+      volume: -4,
+      portamento: 0.05,
+      envelope: { attack: 0.003, decay: 0.15, sustain: 0.3, release: 0.1 },
+      // Resonance lives on the filter options, NOT filterEnvelope (Tone's
+      // FrequencyEnvelope silently drops unknown keys like Q).
+      filter: { Q: 8, type: 'lowpass', rolloff: -12 },
+      filterEnvelope: {
+        attack: 0.005, decay: 0.15, sustain: 0.1, release: 0.1,
+        baseFrequency: 300, octaves: 3.5
+      }
+    });
 
     snare = new Tone.NoiseSynth({
       noise: { type: 'white' },
       envelope: { attack: 0.001, decay: 0.2, sustain: 0 }
-    }).toDestination();
+    });
 
     hatClosed = new Tone.NoiseSynth({
       noise: { type: 'white' },
       envelope: { attack: 0.001, decay: 0.05, sustain: 0 }
-    }).toDestination();
+    });
 
     hatOpen = new Tone.NoiseSynth({
       noise: { type: 'white' },
       envelope: { attack: 0.001, decay: 0.3, sustain: 0 }
-    }).toDestination();
+    });
 
     poly = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'sawtooth' },
       envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 }
     });
-    poly.maxPolyphony = 16;
+    poly.maxPolyphony = 24;
     poly.volume.value = -6;
 
     filter = new Tone.Filter(2000, 'lowpass', -24);
@@ -216,22 +296,100 @@
       console.error('BYODJ_SYNTH: reverb IR generation failed', err);
     });
 
-    poly.chain(filter, dist, delay, reverb, Tone.getDestination());
+    // ---- mixer channels + master section (built once, never disposed;
+    // everything afterwards is param-ramped or .set()) ----
+    channels.kick  = new Tone.Channel(0);
+    channels.bass  = new Tone.Channel(0);
+    channels.snare = new Tone.Channel(0);
+    channels.hats  = new Tone.Channel(0);
+    channels.lead  = new Tone.Channel(0);
+
+    chorus = new Tone.Chorus(4, 2.5, 0.5).start();
+    chorus.wet.value = 0;
+    pumpGain = new Tone.Gain(1);
+    // Tone.BitCrusher is an AudioWorklet; worklet modules cannot load from
+    // file:// (the documented zero-server launch path). A dead worklet in the
+    // series master chain throws uncaught load errors and silences the mix at
+    // any nonzero crush, so gate it and fall back to a transparent Gain.
+    crusher = null;
+    if (window.location.protocol !== 'file:') {
+      try {
+        crusher = new Tone.BitCrusher(4);
+        crusher.wet.value = 0;
+      } catch (e) {
+        console.warn('BYODJ_SYNTH: BitCrusher creation failed, bitcrush disabled', e);
+        crusher = null;
+      }
+    }
+    if (!crusher) {
+      crusher = new Tone.Gain(1); // passthrough stand-in; setCrush no-ops on it
+      var crushMsg = 'Bitcrush disabled: AudioWorklets cannot load from file://. ' +
+        'Serve the page over HTTP (e.g. `python3 -m http.server`) to enable the crush control.';
+      console.warn('BYODJ_SYNTH: ' + crushMsg);
+      if (window.BYODJ_AGENT && typeof window.BYODJ_AGENT.log === 'function') {
+        try { window.BYODJ_AGENT.log(crushMsg); } catch (e2) {}
+      }
+      var crushInput = document.getElementById('crush-amount');
+      if (crushInput) {
+        crushInput.disabled = true;
+        crushInput.title = crushMsg;
+      }
+    }
+    djHP = new Tone.Filter(20, 'highpass', -12);
+    djLP = new Tone.Filter(20000, 'lowpass', -12);
+    comp = new Tone.Compressor({ threshold: -18, ratio: 3, attack: 0.01, release: 0.2 });
+    masterVol = new Tone.Volume(0);
+    limiter = new Tone.Limiter(-1);
+
+    // Kick bypasses pumpGain so the sidechain pump never ducks the kick itself.
+    kick.connect(channels.kick);
+    channels.kick.connect(crusher);
+
+    bass.connect(channels.bass);
+    bassSaw.connect(channels.bass);
+    bassAcid.connect(channels.bass);
+    channels.bass.connect(pumpGain);
+
+    snare.connect(channels.snare);
+    channels.snare.connect(pumpGain);
+
+    hatClosed.connect(channels.hats);
+    hatOpen.connect(channels.hats);
+    channels.hats.connect(pumpGain);
+
+    poly.chain(filter, dist, chorus, delay, reverb, channels.lead);
+    channels.lead.connect(pumpGain);
+
+    pumpGain.chain(crusher, djHP, djLP, comp, masterVol, limiter, Tone.getDestination());
 
     var transport = Tone.getTransport();
     transport.bpm.value = 120;
+    transport.swingSubdivision = '16n';
 
     repeatId = transport.scheduleRepeat(function (time) {
       var st = step;
 
-      if (grid[0][st]) kick.triggerAttackRelease('C1', '16n', time, 0.9);
-      if (grid[1][st]) bass.triggerAttackRelease(currentRoot + '1', '16n', time, 0.9);
+      if (grid[0][st]) {
+        kick.triggerAttackRelease(kickNote, '16n', time, 0.9);
+        if (pumpAmount > 0) {
+          // Sidechain pump: duck the mix bus on every kick, recover in 180ms.
+          pumpGain.gain.cancelScheduledValues(time);
+          pumpGain.gain.setValueAtTime(1 - 0.8 * pumpAmount, time);
+          pumpGain.gain.linearRampToValueAtTime(1, time + 0.18);
+        }
+      }
+      if (grid[1][st]) {
+        var bassSynth = (bassStyle === 'saw') ? bassSaw
+          : (bassStyle === 'acid') ? bassAcid
+          : bass;
+        bassSynth.triggerAttackRelease(currentRoot + '1', '16n', time, 0.9);
+      }
       if (grid[2][st]) snare.triggerAttackRelease('16n', time, 0.9);
       if (grid[3][st]) hatClosed.triggerAttackRelease('16n', time, 0.9);
       if (grid[4][st]) hatOpen.triggerAttackRelease('16n', time, 0.9);
-      for (var r = 5; r < 8; r++) {
+      for (var r = 5; r < 10; r++) {
         if (grid[r][st]) {
-          poly.triggerAttackRelease(noteForRow(r), '16n', time, 0.8);
+          poly.triggerAttackRelease(noteForRow(r), leadNoteLen, time, 0.8);
         }
       }
 
@@ -270,7 +428,7 @@
   // control is missing.
   function setRangeControl(id, v) {
     var input = document.getElementById(id);
-    if (!input) return null;
+    if (!input || input.disabled) return null;
     var min = parseFloat(input.min);
     var max = parseFloat(input.max);
     if (!isNaN(min)) v = Math.max(min, v);
@@ -313,6 +471,27 @@
     btn.addEventListener('click', handler);
   }
 
+  // Toggle buttons keep their state in data-state="on"/"off" (serialized by
+  // page-agent) and mirror it in aria-pressed. Each click flips the state and
+  // calls handler(isOn).
+  function wireToggle(id, handler) {
+    var btn = document.getElementById(id);
+    if (!btn) {
+      console.error('BYODJ_SYNTH: #' + id + ' not found');
+      return;
+    }
+    if (btn.dataset.state !== 'on' && btn.dataset.state !== 'off') {
+      btn.dataset.state = 'off';
+    }
+    btn.setAttribute('aria-pressed', btn.dataset.state === 'on' ? 'true' : 'false');
+    btn.addEventListener('click', function () {
+      var isOn = btn.dataset.state !== 'on';
+      btn.dataset.state = isOn ? 'on' : 'off';
+      btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+      handler(isOn);
+    });
+  }
+
   function wireControls() {
     wireSlider('tempo-slider',      function (v) { api.setTempo(v); });
     wireSlider('filter-cutoff',     function (v) { api.setFilterCutoff(v); });
@@ -328,6 +507,33 @@
     wireSelect('waveform-select', function (v) { api.setWaveform(v); });
     wireSelect('scale-select',    function (v) { api.setScale(v); });
     wireSelect('root-select',     function (v) { api.setRootNote(v); });
+
+    // Mixer strips
+    wireSlider('level-kick',  function (v) { api.setChannelVolume('kick', v); });
+    wireSlider('level-bass',  function (v) { api.setChannelVolume('bass', v); });
+    wireSlider('level-snare', function (v) { api.setChannelVolume('snare', v); });
+    wireSlider('level-hats',  function (v) { api.setChannelVolume('hats', v); });
+    wireSlider('level-lead',  function (v) { api.setChannelVolume('lead', v); });
+    wireToggle('mute-kick',   function (on) { api.setChannelMute('kick', on); });
+    wireToggle('mute-bass',   function (on) { api.setChannelMute('bass', on); });
+    wireToggle('mute-snare',  function (on) { api.setChannelMute('snare', on); });
+    wireToggle('mute-hats',   function (on) { api.setChannelMute('hats', on); });
+    wireToggle('mute-lead',   function (on) { api.setChannelMute('lead', on); });
+
+    // Master & groove
+    wireSlider('master-volume', function (v) { api.setMasterVolume(v); });
+    wireSlider('dj-filter',     function (v) { api.setDjFilter(v); });
+    wireSlider('pump-amount',   function (v) { api.setPump(v); });
+    wireSlider('crush-amount',  function (v) { api.setCrush(v); });
+    wireSlider('swing-amount',  function (v) { api.setSwing(v); });
+
+    // Sound design
+    wireSelect('drum-kit',     function (v) { api.setDrumKit(v); });
+    wireSelect('bass-style',   function (v) { api.setBassStyle(v); });
+    wireSelect('lead-octave',  function (v) { api.setLeadOctave(v); });
+    wireSelect('lead-notelen', function (v) { api.setLeadNoteLen(v); });
+    wireSlider('glide-amount', function (v) { api.setGlide(v); });
+    wireSlider('chorus-wet',   function (v) { api.setChorusWet(v); });
 
     var playBtnEl = document.getElementById('play-btn');
     if (playBtnEl) playBtnEl.dataset.state = 'stopped';
@@ -470,6 +676,119 @@
       // Notes are computed lazily at trigger time.
     },
 
+    setSwing: function (v) {
+      if (!initialized) return;
+      Tone.getTransport().swing = v;
+    },
+
+    setMasterVolume: function (db) {
+      if (!masterVol) return;
+      masterVol.volume.rampTo(db, 0.05);
+    },
+
+    // Bipolar DJ sweep: -100..0 = lowpass closes down to 150 Hz,
+    // 0..100 = highpass rises up to 6 kHz, 0 = both filters open.
+    setDjFilter: function (v) {
+      if (!djHP || !djLP) return;
+      if (v <= 0) {
+        djHP.frequency.rampTo(20, 0.05);
+        djLP.frequency.rampTo(
+          v === 0 ? 20000 : 20000 * Math.pow(150 / 20000, -v / 100), 0.05);
+      } else {
+        djLP.frequency.rampTo(20000, 0.05);
+        djHP.frequency.rampTo(20 * Math.pow(6000 / 20, v / 100), 0.05);
+      }
+    },
+
+    setPump: function (v) {
+      if (typeof v === 'number' && isFinite(v)) {
+        pumpAmount = Math.max(0, Math.min(1, v));
+      }
+    },
+
+    setCrush: function (v) {
+      // crusher is a plain Gain passthrough (no .wet) when the BitCrusher
+      // worklet is unavailable (file://) — no-op in that case.
+      if (!crusher || !crusher.wet) return;
+      crusher.wet.rampTo(v, 0.05);
+    },
+
+    setChorusWet: function (v) {
+      if (!chorus) return;
+      chorus.wet.rampTo(v, 0.05);
+    },
+
+    setGlide: function (s) {
+      // Portamento is a monophonic-voice feature; on a PolySynth each pooled
+      // voice glides from whatever note IT last played, producing random
+      // pitch swoops. Route glide to the mono bass voices instead, where
+      // classic 303-style slides are well-defined.
+      if (!bassSaw || !bassAcid) return;
+      bassSaw.set({ portamento: s });
+      bassAcid.set({ portamento: s });
+    },
+
+    setLeadOctave: function (str) {
+      str = String(str);
+      if (str === '3' || str === '4' || str === '5') leadOct = str;
+    },
+
+    setLeadNoteLen: function (str) {
+      if (str === '16n' || str === '8n' || str === '4n' || str === '2n') {
+        leadNoteLen = str;
+      }
+    },
+
+    setBassStyle: function (name) {
+      if (name === 'sub' || name === 'saw' || name === 'acid') bassStyle = name;
+    },
+
+    setDrumKit: function (name) {
+      var kit = DRUM_KITS[name];
+      if (!kit || !kick) return;
+      kick.set(kit.kick);
+      kickNote = kit.kickNote;
+      snare.set(kit.snare);
+      hatClosed.set(kit.hatClosed);
+      hatOpen.set(kit.hatOpen);
+    },
+
+    setChannelVolume: function (ch, db) {
+      var channel = channels[ch];
+      if (!channel) return;
+      if (channel.mute) {
+        // Tone implements mute by writing -Infinity into the SAME volume
+        // param; ramping it directly would audibly un-mute the channel. Flip
+        // mute off/on around the write so _unmutedVolume picks up the new
+        // fader value and the channel stays silent.
+        channel.mute = false;
+        channel.volume.value = db;
+        channel.mute = true;
+      } else {
+        channel.volume.rampTo(db, 0.05);
+      }
+    },
+
+    setChannelMute: function (ch, muted) {
+      var channel = channels[ch];
+      if (!channel) return;
+      channel.mute = !!muted;
+    },
+
+    // Drives a wireToggle()-style button to the requested state by clicking
+    // it only when its data-state differs. Returns the resulting boolean, or
+    // null if the button is missing.
+    setToggleControl: function (id, on) {
+      var btn = document.getElementById(id);
+      if (!btn) return null;
+      var isOn = btn.dataset.state === 'on';
+      if (isOn !== !!on) {
+        btn.click();
+        isOn = btn.dataset.state === 'on';
+      }
+      return isOn;
+    },
+
     // One-shot composition apply, used by the agent's set_composition tool in
     // composer mode. Drives the same DOM controls a human would, so outputs,
     // serialized attributes, and the audio engine stay in sync. All fields
@@ -505,9 +824,13 @@
         else applied.push(label + '=' + set);
       }
 
-      if (comp.clearFirst) {
-        api.clearGrid();
-        applied.push('grid cleared');
+      if (comp.clearFirst !== undefined && comp.clearFirst !== null) {
+        if (typeof comp.clearFirst !== 'boolean') {
+          warnings.push('clearFirst: expected boolean, ignored');
+        } else if (comp.clearFirst) {
+          api.clearGrid();
+          applied.push('grid cleared');
+        }
       }
 
       if (comp.pattern && typeof comp.pattern === 'object' && !Array.isArray(comp.pattern)) {
@@ -538,16 +861,20 @@
           warnings.push('unknown pattern rows ignored: ' + unknown.join(', ') + ' (valid rows: ' + ROW_KEYS.join(', ') + ')');
         }
         syncAllCells();
+      } else if (comp.pattern !== undefined && comp.pattern !== null) {
+        warnings.push('pattern: expected an object mapping row names (' + ROW_KEYS.join(', ') + ') to arrays of step indices 0-15, ignored');
       }
 
       slider('tempo-slider', comp.tempo, 'tempo');
       slider('filter-cutoff', comp.filterCutoff, 'filterCutoff');
       slider('filter-resonance', comp.filterResonance, 'filterResonance');
-      if (comp.envelope && typeof comp.envelope === 'object') {
+      if (comp.envelope && typeof comp.envelope === 'object' && !Array.isArray(comp.envelope)) {
         slider('env-attack', comp.envelope.attack, 'attack');
         slider('env-decay', comp.envelope.decay, 'decay');
         slider('env-sustain', comp.envelope.sustain, 'sustain');
         slider('env-release', comp.envelope.release, 'release');
+      } else if (comp.envelope !== undefined && comp.envelope !== null) {
+        warnings.push('envelope: expected an object with attack/decay/sustain/release numbers, ignored');
       }
       slider('reverb-wet', comp.reverb, 'reverb');
       slider('delay-wet', comp.delay, 'delay');
@@ -557,7 +884,57 @@
       select('scale-select', comp.scale, 'scale');
       select('root-select', comp.root, 'root');
 
-      var playPromise = (comp.play !== false) ? api.play() : null;
+      select('drum-kit', comp.drumKit, 'drumKit');
+      select('bass-style', comp.bassStyle, 'bassStyle');
+      select('lead-octave', comp.leadOctave, 'leadOctave');
+      select('lead-notelen', comp.leadNoteLen, 'leadNoteLen');
+      slider('glide-amount', comp.glide, 'glide');
+      slider('chorus-wet', comp.chorus, 'chorus');
+      slider('swing-amount', comp.swing, 'swing');
+      slider('crush-amount', comp.crush, 'crush');
+      slider('pump-amount', comp.pump, 'pump');
+      slider('dj-filter', comp.djFilter, 'djFilter');
+      slider('master-volume', comp.masterVolume, 'masterVolume');
+
+      if (comp.mixer && typeof comp.mixer === 'object' && !Array.isArray(comp.mixer)) {
+        slider('level-kick', comp.mixer.kickVol, 'kickVol');
+        slider('level-bass', comp.mixer.bassVol, 'bassVol');
+        slider('level-snare', comp.mixer.snareVol, 'snareVol');
+        slider('level-hats', comp.mixer.hatsVol, 'hatsVol');
+        slider('level-lead', comp.mixer.leadVol, 'leadVol');
+        // Mutes go LAST so a requested drop isn't clobbered by other settings.
+        ['kick', 'bass', 'snare', 'hats', 'lead'].forEach(function (ch) {
+          var want = comp.mixer[ch + 'Mute'];
+          if (want === undefined || want === null) return;
+          if (typeof want !== 'boolean') {
+            warnings.push(ch + 'Mute: expected boolean, ignored');
+            return;
+          }
+          var state = api.setToggleControl('mute-' + ch, want);
+          if (state === null) warnings.push(ch + 'Mute: control missing');
+          else applied.push(ch + 'Mute=' + state);
+        });
+        var MIXER_KEYS = ['kickVol', 'bassVol', 'snareVol', 'hatsVol', 'leadVol',
+          'kickMute', 'bassMute', 'snareMute', 'hatsMute', 'leadMute'];
+        var unknownMixer = Object.keys(comp.mixer).filter(function (k) {
+          return MIXER_KEYS.indexOf(k) === -1;
+        });
+        if (unknownMixer.length) {
+          warnings.push('unknown mixer keys ignored: ' + unknownMixer.join(', ') + ' (valid keys: ' + MIXER_KEYS.join(', ') + '; masterVolume is top-level)');
+        }
+      } else if (comp.mixer !== undefined && comp.mixer !== null) {
+        warnings.push('mixer: expected an object with kickVol/bassVol/snareVol/hatsVol/leadVol (dB) and kickMute/bassMute/snareMute/hatsMute/leadMute (boolean), ignored');
+      }
+
+      var playPromise;
+      if (typeof comp.play === 'boolean') {
+        playPromise = comp.play ? api.play() : null;
+      } else {
+        if (comp.play !== undefined && comp.play !== null) {
+          warnings.push('play: expected boolean, ignored (defaulting to play)');
+        }
+        playPromise = api.play();
+      }
 
       return { ok: true, applied: applied, warnings: warnings, playPromise: playPromise };
     }

@@ -150,7 +150,9 @@ h3 {
 
 .cell.on[data-row="5"],
 .cell.on[data-row="6"],
-.cell.on[data-row="7"] {
+.cell.on[data-row="7"],
+.cell.on[data-row="8"],
+.cell.on[data-row="9"] {
   background: var(--cyan);
   border-color: #8df1ff;
   box-shadow:
@@ -165,6 +167,8 @@ h3 {
 .cell.on[data-row="4"] { background: #b964d6; }
 .cell.on[data-row="6"] { background: #2fd4f5; }
 .cell.on[data-row="7"] { background: #45c6ee; }
+.cell.on[data-row="8"] { background: #5bb8e6; }
+.cell.on[data-row="9"] { background: #6faade; }
 
 .cell.playhead {
   outline: 2px solid rgba(255, 255, 255, 0.75);
@@ -182,7 +186,9 @@ h3 {
 
 .cell.on.playhead[data-row="5"],
 .cell.on.playhead[data-row="6"],
-.cell.on.playhead[data-row="7"] {
+.cell.on.playhead[data-row="7"],
+.cell.on.playhead[data-row="8"],
+.cell.on.playhead[data-row="9"] {
   box-shadow:
     0 0 12px #fff,
     0 0 26px var(--cyan),
@@ -332,6 +338,54 @@ textarea:focus {
   box-shadow: 0 0 8px rgba(25, 227, 255, 0.4);
 }
 
+/* ---------- Mixer ---------- */
+
+.mixer-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.mixer-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  background: #100d1a;
+  border: 1px solid rgba(25, 227, 255, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 0 8px rgba(25, 227, 255, 0.08);
+}
+
+.mixer-strip label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.mute-btn {
+  padding: 4px 12px;
+  font-size: 0.7rem;
+}
+
+.mute-btn[data-state="on"] {
+  background: var(--magenta);
+  color: #0d0b14;
+  box-shadow: 0 0 10px var(--magenta);
+}
+
+/* DJ filter: bipolar sweep — magenta (lowpass) to cyan (highpass) */
+#dj-filter {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 45, 149, 0.75),
+    rgba(34, 30, 48, 0.9) 50%,
+    rgba(25, 227, 255, 0.75)
+  );
+}
+
 /* ---------- LLM config ---------- */
 
 .llm-grid {
@@ -420,6 +474,9 @@ textarea:focus {
   .status-cards {
     flex-direction: column;
   }
+  .mixer-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
@@ -433,5 +490,8 @@ textarea:focus {
   .cell {
     width: 22px;
     height: 22px;
+  }
+  .mixer-grid {
+    grid-template-columns: 1fr;
   }
 }

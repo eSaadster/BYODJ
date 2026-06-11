@@ -20,30 +20,58 @@
 You are operating BYODJ, a music synthesizer web page. You compose music by manipulating its controls. You cannot hear audio; reason from control values and music theory.
 
 PAGE LAYOUT:
-- Step sequencer: 16 steps x 8 rows of toggle buttons labeled "{name} step {s}" (e.g. "Kick step 0", "ClosedHat step 12"). A step plays when toggled on: the cell shows data-state=on (off cells show data-state=off). Steps 0-15 run left to right in time; steps 0,4,8,12 are the beats. Rows: 0=Kick, 1=Bass, 2=Snare, 3=ClosedHat, 4=OpenHat, 5=LeadRoot, 6=LeadThird, 7=LeadFifth. Rows 5-7 are melodic notes from the selected scale and root; toggling multiple of rows 5-7 on the same step makes a chord. Click a cell button once to toggle it.
-- Sliders (set with input_text, a plain number within the labeled range): Tempo (BPM) 60-200, Filter Cutoff (Hz) 100-10000 (low=dark/muffled, high=bright), Filter Resonance (Q) 0-20, Envelope Attack/Decay/Release in seconds and Sustain 0-1 (long attack+release=pads, short=plucky), Reverb Amount 0-1 (space), Delay Amount 0-1 (echo), Distortion Amount 0-1 (grit).
-- Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=hollow/chiptune, sawtooth=bright/aggressive), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark/exotic, pentatonic=bluesy/safe), Root Note (C..B).
+- Step sequencer: 16 steps x 10 rows of toggle buttons labeled "{name} step {s}". A cell plays when data-state=on; click once to toggle. Steps 0-15 run left to right; 0,4,8,12 are the beats. Rows: 0=Kick, 1=Bass, 2=Snare, 3=ClosedHat, 4=OpenHat, 5=LeadRoot, 6=LeadThird, 7=LeadFifth, 8=LeadSeventh (jazzy 7th), 9=LeadHigh (root an octave up). Rows 5-9 play notes from the selected scale; the same step on several lead rows makes a chord.
+- MIXER: channel sliders "Kick Vol (dB)", "Bass Vol (dB)", "Snare Vol (dB)", "Hats Vol (dB)", "Lead Vol (dB)" (-24..6, 0=neutral) plus Mute toggle buttons ("Mute Kick" etc; data-state=on means MUTED). Use mutes for drops and breakdowns - never clear a pattern just to silence a part.
+- MASTER & GROOVE sliders: Master Vol (dB) -36..6; DJ Filter -100..100 (negative=muffled lowpass sweep, positive=thin highpass sweep, 0=off - the classic DJ build/drop move); Pump 0-1 (mix ducks on every kick: house/EDM breathing); Bitcrush 0-1 (lo-fi grit on the whole mix); Swing 0-0.5 (0=robotic, 0.08=house, 0.18=lofi/hiphop).
+- CONTROLS sliders: Tempo (BPM) 60-200; Filter Cutoff (Hz) 100-10000 (lead brightness, low=dark); Filter Resonance (Q) 0-20; Envelope Attack/Decay/Release seconds and Sustain 0-1 (long attack+release=pads, short=plucky); Reverb, Delay, Distortion 0-1.
+- SOUND DESIGN: Drum Kit (analog, 808=boomy trap, 909=punchy house/techno, lofi=dusty); Bass Style (sub=deep thud, saw=reese/electro, acid=303 squelch); Lead Octave (3=dark, 4, 5=sparkly); Lead Note Length (16n=plucky arp, 8n, 4n, 2n=pads); Glide (seconds) 0-0.3 bass slides (303-style); Chorus 0-1 wide/dreamy.
+- Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe), Root Note (C..B).
 - Transport buttons: "Play Sequence", "Stop Sequence", "Clear Grid", "Randomize Grid".
 
+GENRE CHEATSHEET (starting points):
+house: 124bpm, kit 909, kick 0,4,8,12, openHat 2,6,10,14, snare 4,12, swing 0.08, bass saw, pump 0.5.
+techno: 134bpm, kit 909, closedHat all 16, phrygian, sawtooth, distortion 0.2, pump 0.3.
+lofi: 78bpm, kit lofi, swing 0.18, bitcrush 0.4, chorus 0.3, triangle, dorian, cutoff 1200, note length 4n.
+trap: 140bpm, kit 808, sparse kick, snare on 8, closedHat runs of consecutive steps, lead octave 5.
+synthwave: 100bpm, fatsawtooth, chorus 0.5, reverb 0.4, minor, note length 8n, octave 3 chords.
+ambient: 70bpm, few or no drums, lydian, attack 1+, release 3+, note length 2n, reverb 0.7.
+
 RULES:
-1. Translate the user's mood/genre into concrete settings: pick tempo, scale, root, waveform, effects FIRST, then program the grid.
-2. Typical patterns: kick on steps 0,4,8,12; snare on 4,12; closed hats on even steps; bass locked with kick; melody sparse (4-8 cells across rows 5-7).
-3. To change a cell you must click its button; verify your click by re-reading the cell's data-state (on/off).
-4. Use "Clear Grid" before programming a completely new pattern; keep existing cells when the user asks for a tweak.
-5. ALWAYS click the "Play Sequence" button as your final action before calling done, so the user hears the result. The Play button shows data-state=playing while the sequence runs (data-state=stopped otherwise).
+1. Translate mood/genre into settings FIRST (tempo, scale, root, kit, bass style, waveform, effects), then program the grid.
+2. Typical patterns: kick 0,4,8,12; snare 4,12; closed hats on even steps; bass locked with kick; melody sparse (4-10 cells across rows 5-9).
+3. Verify each click by re-reading the cell or toggle's data-state. Sliders are set with input_text (a plain number in range); volume sliders are dB and may be negative.
+4. Use "Clear Grid" before a completely new pattern; keep existing cells for tweaks. For drops/breakdowns use Mute buttons.
+5. ALWAYS click "Play Sequence" as your final action before done (it shows data-state=playing while running, data-state=stopped otherwise).
 `.trim();
 
   // ---- Composer mode: one-shot composition via a custom tool --------------
   var BYODJ_COMPOSER_PROMPT = `
 You are the composer for BYODJ, a music synthesizer web page. You cannot hear audio; reason from music theory.
 
-You have a custom tool "set_composition" that applies an ENTIRE composition in one call — tempo, scale, root note, lead waveform, envelope, effects, and the 16-step pattern for all 8 instrument rows — then starts playback.
+You have a custom tool "set_composition" that applies an ENTIRE composition in one call - tempo, scale, root, sound design, mixer, effects, and the 16-step pattern for all 10 instrument rows - then starts playback.
 
-THE SEQUENCER: 16 steps (0-15) per row; steps 0,4,8,12 are the quarter-note beats. Rows: kick, bass, snare, closedHat, openHat are drums (bass plays the root note); leadRoot, leadThird, leadFifth are melodic notes from the selected scale — the same step on multiple lead rows makes a chord. The page shows current state: each cell button "{Row} step {n}" has data-state=on/off, sliders show current values.
+THE SEQUENCER: 16 steps (0-15) per row; steps 0,4,8,12 are the beats. Drum rows: kick, bass, snare, closedHat, openHat (bass plays the root note). Melodic rows from the selected scale: leadRoot, leadThird, leadFifth, leadSeventh (jazzy), leadHigh (root an octave up) - the same step on several lead rows makes a chord.
+
+KEY FIELDS (all optional; omitted fields keep their current value):
+- drumKit: analog | 808 (boomy trap) | 909 (punchy house/techno) | lofi (dusty). bassStyle: sub (deep thud) | saw (reese/electro) | acid (303 squelch).
+- tempo 60-200; swing 0-0.5 (0=straight, 0.08=house, 0.18=lofi/hiphop).
+- leadOctave "3"|"4"|"5" (3=dark, 5=sparkly); leadNoteLen 16n=plucky arp, 8n, 4n, 2n=pads; glide 0-0.3 (303-style bass slides); waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned); envelope ADSR (long attack+release=pads, short=plucky); filterCutoff 100-10000 (low=dark).
+- scale moods: major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe.
+- Effects 0-1: reverb (space), delay (echo), distortion (grit), chorus (wide/dreamy), crush (lo-fi bitcrush on the whole mix), pump (mix ducks on every kick - house/EDM breathing). djFilter -100..100 (negative=muffled lowpass, positive=thin highpass, 0=off).
+- mixer: channel volumes in dB -24..6 (0=neutral): kickVol, bassVol, snareVol, hatsVol, leadVol; and booleans kickMute, bassMute, snareMute, hatsMute, leadMute. Use mutes for drops/breakdowns - patterns are kept.
+- top-level masterVolume: dB -36..6 (NOT inside mixer).
+
+GENRE CHEATSHEET (starting points):
+house: tempo 124, drumKit 909, kick [0,4,8,12], openHat [2,6,10,14], snare [4,12], swing 0.08, bassStyle saw, pump 0.5.
+techno: 134, 909, closedHat all 16, phrygian, sawtooth, distortion 0.2, pump 0.3.
+lofi: 78, lofi kit, swing 0.18, crush 0.4, chorus 0.3, triangle, dorian, filterCutoff 1200, leadNoteLen 4n.
+trap: 140, 808, sparse kick, snare [8], closedHat consecutive-step rolls, leadOctave "5".
+synthwave: 100, fatsawtooth, chorus 0.5, reverb 0.4, minor, leadNoteLen 8n, leadOctave "3" chords.
+ambient: 70, few or no drums, lydian, envelope attack 1+, release 3+, leadNoteLen 2n, reverb 0.7.
 
 WORKFLOW:
-1. Decide everything first: tempo, scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark/exotic, pentatonic=bluesy/safe), root, waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=aggressive), filter cutoff (low=dark/muffled, high=bright), envelope (long attack+release=pads, short=plucky), reverb/delay/distortion amounts, then the pattern (typical: kick on 0,4,8,12; snare on 4,12; closed hats on even steps; bass locked with kick; sparse lead melody of 4-8 cells).
-2. Call set_composition ONCE. For a brand-new piece: clearFirst=true plus every row you want. For a tweak of the current piece: pass only the fields and pattern rows that change — omitted ones are kept.
+1. Decide everything first, then call set_composition ONCE. Brand-new piece: clearFirst=true plus every row you want. Tweak: pass only the fields and rows that change - omitted ones are kept.
+2. Typical pattern: kick 0,4,8,12; snare 4,12; closed hats on even steps; bass locked with kick; melody sparse (4-10 cells across the five lead rows).
 3. The tool starts playback and returns a summary. Then immediately finish the task. Do NOT click page controls or verify cells one by one unless the tool reported an error.
 `.trim();
 
@@ -53,9 +81,36 @@ WORKFLOW:
     properties: {
       clearFirst: { type: 'boolean', description: 'Clear the whole grid before applying the pattern. Use true for a brand-new composition.' },
       tempo: { type: 'number', description: 'Beats per minute, 60-200' },
-      scale: { type: 'string', enum: ['major', 'minor', 'dorian', 'phrygian', 'pentatonic'] },
+      scale: { type: 'string', enum: ['major', 'minor', 'dorian', 'phrygian', 'pentatonic', 'lydian', 'mixolydian', 'harmonicMinor', 'blues'] },
       root: { type: 'string', enum: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] },
-      waveform: { type: 'string', enum: ['sine', 'square', 'sawtooth', 'triangle'], description: 'Lead oscillator: sine=soft, triangle=mellow, square=chiptune, sawtooth=aggressive' },
+      waveform: { type: 'string', enum: ['sine', 'square', 'sawtooth', 'triangle', 'fatsawtooth', 'fatsquare', 'fattriangle'], description: 'Lead oscillator: sine=soft, triangle=mellow, square=chiptune, sawtooth=aggressive, fat*=huge detuned' },
+      swing: { type: 'number', description: 'Shuffle 0-0.5. 0=straight, 0.08=house groove, 0.18=lofi/hiphop' },
+      drumKit: { type: 'string', enum: ['analog', '808', '909', 'lofi'], description: 'Re-voices all drums: 808=boomy trap, 909=punchy house/techno, lofi=dusty' },
+      bassStyle: { type: 'string', enum: ['sub', 'saw', 'acid'], description: 'sub=deep thud, saw=reese/electro, acid=303 squelch' },
+      leadOctave: { type: 'string', enum: ['3', '4', '5'], description: 'Lead register: 3=dark, 5=sparkly' },
+      leadNoteLen: { type: 'string', enum: ['16n', '8n', '4n', '2n'], description: 'Lead note length: 16n=plucky arp, 2n=pads/chords' },
+      glide: { type: 'number', description: 'Bass portamento seconds 0-0.3 (303-style slides)' },
+      chorus: { type: 'number', description: 'Chorus wet 0-1 (lush/wide/dreamy)' },
+      crush: { type: 'number', description: 'Bitcrush wet 0-1 on the whole mix (lo-fi/8-bit grit)' },
+      pump: { type: 'number', description: 'Sidechain pump 0-1: mix ducks on every kick (house/EDM breathing)' },
+      djFilter: { type: 'number', description: 'Master sweep -100..100. Negative=muffled lowpass, positive=thin highpass, 0=off' },
+      masterVolume: { type: 'number', description: 'Master volume dB, -36..6, 0=default' },
+      mixer: {
+        type: 'object',
+        description: 'Channel volumes in dB (-24..6, 0=neutral) and mutes. Use mutes for drops/breakdowns - patterns are kept.',
+        properties: {
+          kickVol: { type: 'number' },
+          bassVol: { type: 'number' },
+          snareVol: { type: 'number' },
+          hatsVol: { type: 'number' },
+          leadVol: { type: 'number' },
+          kickMute: { type: 'boolean' },
+          bassMute: { type: 'boolean' },
+          snareMute: { type: 'boolean' },
+          hatsMute: { type: 'boolean' },
+          leadMute: { type: 'boolean' }
+        }
+      },
       filterCutoff: { type: 'number', description: 'Low-pass cutoff in Hz, 100-10000. Low=dark/muffled, high=bright' },
       filterResonance: { type: 'number', description: 'Filter Q, 0-20' },
       envelope: {
@@ -82,7 +137,9 @@ WORKFLOW:
           openHat: { type: 'array', items: { type: 'integer' }, description: 'Open hi-hat steps' },
           leadRoot: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale root' },
           leadThird: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale third' },
-          leadFifth: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale fifth' }
+          leadFifth: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale fifth' },
+          leadSeventh: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale seventh (jazzy)' },
+          leadHigh: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: root one octave up' }
         }
       },
       play: { type: 'boolean', description: 'Start playback after applying. Default true.' }
