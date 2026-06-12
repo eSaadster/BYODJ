@@ -73,6 +73,7 @@
       <button id="play-btn" aria-label="Play Sequence">&#9654; Play</button>
       <button id="stop-btn" aria-label="Stop Sequence">&#9632; Stop</button>
       <button id="clear-btn" aria-label="Clear Grid">Clear</button>
+      <button id="clear-all-btn" aria-label="Clear All">Clear All</button>
       <button id="random-btn" aria-label="Randomize Grid">Random</button>
     </div>
   </section>
@@ -114,6 +115,20 @@
         <input type="range" id="level-lead" aria-label="Lead Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-lead-value" class="val" for="level-lead">0</output>
         <button id="mute-lead" class="mute-btn" aria-label="Mute Lead" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+      <div class="mixer-strip">
+        <label for="level-pad">Pad Vol (dB)</label>
+        <input type="range" id="level-pad" aria-label="Pad Vol (dB)" min="-24" max="6" step="1" value="-6">
+        <output id="level-pad-value" class="val" for="level-pad">-6</output>
+        <button id="mute-pad" class="mute-btn" aria-label="Mute Pad" data-state="off" aria-pressed="false">Mute</button>
+      </div>
+
+      <div class="mixer-strip">
+        <label for="level-perc">Perc Vol (dB)</label>
+        <input type="range" id="level-perc" aria-label="Perc Vol (dB)" min="-24" max="6" step="1" value="0">
+        <output id="level-perc-value" class="val" for="level-perc">0</output>
+        <button id="mute-perc" class="mute-btn" aria-label="Mute Perc" data-state="off" aria-pressed="false">Mute</button>
       </div>
 
     </div>
@@ -220,6 +235,14 @@
       </div>
 
       <div class="control">
+        <label for="delay-style">Delay Style</label>
+        <select id="delay-style" aria-label="Delay Style" data-state="feedback">
+          <option value="feedback" selected>feedback</option>
+          <option value="pingpong">pingpong</option>
+        </select>
+      </div>
+
+      <div class="control">
         <label for="distortion-amount">Distortion Amount (0 to 1)</label>
         <input type="range" id="distortion-amount" aria-label="Distortion (0-1)" min="0" max="1" step="0.01" value="0">
         <output id="distortion-amount-value" class="val" for="distortion-amount">0</output>
@@ -235,6 +258,12 @@
           <option value="fatsawtooth">fatsawtooth</option>
           <option value="fatsquare">fatsquare</option>
           <option value="fattriangle">fattriangle</option>
+          <option value="pwm">pwm</option>
+          <option value="pulse">pulse</option>
+          <option value="fmsine">fmsine</option>
+          <option value="fmsquare">fmsquare</option>
+          <option value="amsine">amsine</option>
+          <option value="amtriangle">amtriangle</option>
         </select>
       </div>
 
@@ -285,6 +314,7 @@
           <option value="808">808</option>
           <option value="909">909</option>
           <option value="lofi">lofi</option>
+          <option value="sampled">sampled</option>
         </select>
       </div>
 
@@ -295,6 +325,30 @@
           <option value="saw">saw</option>
           <option value="acid">acid</option>
         </select>
+      </div>
+
+      <div class="control">
+        <label for="lead-style">Lead Style</label>
+        <select id="lead-style" aria-label="Lead Style" data-state="saw">
+          <option value="saw" selected>saw</option>
+          <option value="pluck">pluck</option>
+          <option value="bell">bell</option>
+          <option value="duo">duo</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="perc-voice">Perc Voice</label>
+        <select id="perc-voice" aria-label="Perc Voice" data-state="tom">
+          <option value="tom" selected>tom</option>
+          <option value="metal">metal</option>
+          <option value="rim">rim</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="pad-toggle">Pad Layer</label>
+        <button id="pad-toggle" class="toggle-btn" type="button" aria-label="Pad Layer" data-state="off" aria-pressed="false">Pad</button>
       </div>
 
       <div class="control">
@@ -378,8 +432,10 @@
     <h2>Talk to the DJ</h2>
     <div class="chat-row">
       <textarea id="instruction-input" rows="2" aria-label="Instruction for the DJ agent" placeholder="Tell the DJ what to play&#8230;"></textarea>
+      <button id="improve-btn" type="button" aria-label="Improve Prompt">Improve</button>
       <button id="send-btn" aria-label="Send Instruction" disabled>Send</button>
     </div>
+    <p class="hint">Rough idea? Type a genre or vibe (e.g. "djent") and hit <strong>Improve</strong> &mdash; it rewrites your ask into a detailed brief that uses the full machine (arrangement, dynamics, sweeps). Review, tweak, then Send.</p>
   </section>
 
   <section id="status-panel">

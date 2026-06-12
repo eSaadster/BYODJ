@@ -9,7 +9,7 @@
 
   // ---------------------------------------------------------- constants
 
-  var NUM_ROWS = 10;
+  var NUM_ROWS = 11;
   var VISIBLE_STEPS = 16;   // grid DOM is ALWAYS 16 columns (160 cells)
   var MAX_STEPS = 64;       // every scene allocated 64 wide; patternLength masks it
   var NUM_SCENES = 4;
@@ -37,11 +37,11 @@
   var ROW_NAMES = [
     'Kick', 'Bass', 'Snare', 'Closed Hat',
     'Open Hat', 'Lead Root', 'Lead Third', 'Lead Fifth',
-    'Lead 7th', 'Lead Oct'
+    'Lead 7th', 'Lead Oct', 'Perc'
   ];
 
   // Per-row probability that a cell turns on in randomizeGrid()
-  var RANDOM_PROBS = [0.25, 0.25, 0.2, 0.5, 0.15, 0.25, 0.25, 0.25, 0.15, 0.12];
+  var RANDOM_PROBS = [0.25, 0.25, 0.2, 0.5, 0.15, 0.25, 0.25, 0.25, 0.15, 0.12, 0.15];
 
   var SCALES = {
     major:         [0, 2, 4, 5, 7, 9, 11],
@@ -68,7 +68,7 @@
   var ROW_LABEL_NAMES = [
     'Kick', 'Bass', 'Snare', 'ClosedHat',
     'OpenHat', 'LeadRoot', 'LeadThird', 'LeadFifth',
-    'LeadSeventh', 'LeadHigh'
+    'LeadSeventh', 'LeadHigh', 'Perc'
   ];
 
   // Row keys accepted by applyComposition()'s pattern object, index-aligned
@@ -77,7 +77,7 @@
   var ROW_KEYS = [
     'kick', 'bass', 'snare', 'closedHat',
     'openHat', 'leadRoot', 'leadThird', 'leadFifth',
-    'leadSeventh', 'leadHigh'
+    'leadSeventh', 'leadHigh', 'perc'
   ];
 
   // ---------------------------------------------------------- state
@@ -132,16 +132,23 @@
 
   // Tone nodes (created in init)
   var kick, bass, snare, hatClosed, hatOpen, poly;
-  var filter, dist, delay, reverb;
+  var leadPlucks = [], leadPluckIdx = 0, leadBell, leadDuo, padSynth, padFilter;
+  var percTom, percMetal, percRim, samplePlayers;
+  var filter, dist, delay, pingpong, reverb;
   var bassSaw, bassAcid, chorus, pumpGain, crusher, djHP, djLP;
   var comp, masterVol, limiter;
-  var channels = {};         // kick|bass|snare|hats|lead -> Tone.Channel
+  var channels = {};         // kick|bass|snare|hats|lead|pad|perc -> Tone.Channel
   var repeatId = null;
   var initialized = false;
 
   // Performance / sound-design state (read at trigger time)
   var pumpAmount = 0;
   var bassStyle = 'sub';     // 'sub' | 'saw' | 'acid'
+  var leadStyle = 'saw';     // 'saw' | 'pluck' | 'bell' | 'duo'
+  var delayStyle = 'feedback';
+  var padOn = false;
+  var percVoice = 'tom';
+  var drumKitMode = 'synth';
   var kickNote = 'C1';       // re-voiced by setDrumKit()
   var leadNoteLen = '16n';   // '16n' | '8n' | '4n' | '2n'
   var leadOct = '4';         // '3' | '4' | '5'
@@ -570,6 +577,14 @@
     return Tone.Frequency(currentRoot + leadOct).transpose(semitones).toNote();
   }
 
+  function chordNotes() {
+    var saved = leadOct;
+    leadOct = '3';
+    var notes = [noteForRow(5), noteForRow(6), noteForRow(7)];
+    leadOct = saved;
+    return notes;
+  }
+
   function clearPlayhead() {
     var cells = document.querySelectorAll('#sequencer-grid .cell.playhead');
     for (var i = 0; i < cells.length; i++) cells[i].classList.remove('playhead');
@@ -708,6 +723,50 @@
     poly.maxPolyphony = 24;
     poly.volume.value = -6;
 
+    // PluckSynth is built on FeedbackCombFilter, an AudioWorklet; worklet
+    // modules cannot load from file:// (same constraint as BitCrusher), so
+    // gate the pool and fall back to the saw poly at trigger time.
+    if (window.location.protocol !== 'file:') {
+      try {
+        for (var pi = 0; pi < 4; pi++) {
+          leadPlucks.push(new Tone.PluckSynth({ attackNoise: 1, dampening: 4000, resonance: 0.7 }));
+        }
+      } catch (ePluck) {
+        console.warn('BYODJ_SYNTH: PluckSynth creation failed, pluck lead style disabled', ePluck);
+        leadPlucks = [];
+      }
+    } else {
+      var pluckOpt = document.querySelector('#lead-style option[value="pluck"]');
+      if (pluckOpt) {
+        pluckOpt.disabled = true;
+        pluckOpt.title = 'pluck needs HTTP (AudioWorklet cannot load from file://)';
+      }
+    }
+    leadBell = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 3.01,
+      modulationIndex: 14,
+      envelope: { attack: 0.01, decay: 0.5, sustain: 0.25, release: 1.8 },
+      volume: -8
+    });
+    leadDuo = new Tone.PolySynth(Tone.DuoSynth, {
+      vibratoAmount: 0,
+      harmonicity: 1.5,
+      envelope: { attack: 0.01, decay: 0.25, sustain: 0.55, release: 0.8 },
+      volume: -9
+    });
+    leadDuo.maxPolyphony = 8;
+
+    padSynth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'fatsawtooth' },
+      envelope: { attack: 0.6, decay: 0.3, sustain: 0.8, release: 2.5 },
+      volume: -10
+    });
+    padFilter = new Tone.Filter(1200, 'lowpass');
+
+    percTom = new Tone.MembraneSynth({ pitchDecay: 0.08, octaves: 3 });
+    percMetal = new Tone.MetalSynth({ envelope: { decay: 0.15 }, harmonicity: 5.1, resonance: 3000 });
+    percRim = new Tone.MetalSynth({ envelope: { decay: 0.04 }, frequency: 800, harmonicity: 8 });
+
     filter = new Tone.Filter(2000, 'lowpass', -24);
     dist = new Tone.Distortion(0);
     // True bypass at slider=0: Distortion's waveshaper attenuates even at
@@ -715,6 +774,8 @@
     dist.wet.value = 0;
     delay = new Tone.FeedbackDelay('8n', 0.35);
     delay.wet.value = 0.15;
+    pingpong = new Tone.PingPongDelay('8n', 0.35);
+    pingpong.wet.value = 0;
     reverb = new Tone.Reverb({ decay: 3, preDelay: 0.01, wet: 0.2 });
     // Reverb generates its impulse response async; fire-and-forget.
     reverb.ready.catch(function (err) {
@@ -728,6 +789,8 @@
     channels.snare = new Tone.Channel(0);
     channels.hats  = new Tone.Channel(0);
     channels.lead  = new Tone.Channel(0);
+    channels.pad   = new Tone.Channel(-6);
+    channels.perc  = new Tone.Channel(0);
 
     chorus = new Tone.Chorus(4, 2.5, 0.5).start();
     chorus.wet.value = 0;
@@ -782,10 +845,45 @@
     hatOpen.connect(channels.hats);
     channels.hats.connect(pumpGain);
 
-    poly.chain(filter, dist, chorus, delay, reverb, channels.lead);
+    poly.chain(filter, dist, chorus, delay, pingpong, reverb, channels.lead);
+    for (var lpi = 0; lpi < leadPlucks.length; lpi++) leadPlucks[lpi].chain(filter);
+    leadBell.chain(filter);
+    leadDuo.chain(filter);
     channels.lead.connect(pumpGain);
 
+    padSynth.chain(padFilter, channels.pad);
+    channels.pad.connect(pumpGain);
+
+    percTom.connect(channels.perc);
+    percMetal.connect(channels.perc);
+    percRim.connect(channels.perc);
+    channels.perc.connect(pumpGain);
+
     pumpGain.chain(crusher, djHP, djLP, comp, masterVol, limiter, Tone.getDestination());
+
+    if (window.location.protocol !== 'file:') {
+      try {
+        samplePlayers = new Tone.Players({
+          kick: 'https://tonejs.github.io/audio/drum-samples/CR78/kick.mp3',
+          snare: 'https://tonejs.github.io/audio/drum-samples/CR78/snare.mp3',
+          hatClosed: 'https://tonejs.github.io/audio/drum-samples/CR78/hihat.mp3',
+          hatOpen: 'https://tonejs.github.io/audio/drum-samples/CR78/hihat.mp3'
+        });
+        samplePlayers.player('kick').connect(channels.kick);
+        samplePlayers.player('snare').connect(channels.snare);
+        samplePlayers.player('hatClosed').connect(channels.hats);
+        samplePlayers.player('hatOpen').connect(channels.hats);
+      } catch (e3) {
+        console.warn('BYODJ_SYNTH: sampled drum kit unavailable', e3);
+        samplePlayers = null;
+      }
+    } else {
+      var sampled = document.querySelector('#drum-kit option[value="sampled"]');
+      if (sampled) {
+        sampled.disabled = true;
+        sampled.title = 'sampled kit needs HTTP';
+      }
+    }
 
     var transport = Tone.getTransport();
     transport.bpm.value = 120;
@@ -803,7 +901,12 @@
 
       c = sc[0][st];
       if (gateCell(c)) {
-        kick.triggerAttackRelease(kickNote, '16n', time, c.v);
+        if (drumKitMode === 'sampled' && samplePlayers) {
+          samplePlayers.player('kick').volume.value = Tone.gainToDb(c.v);
+          samplePlayers.player('kick').start(time);
+        } else {
+          kick.triggerAttackRelease(kickNote, '16n', time, c.v);
+        }
         if (pumpAmount > 0) {
           // Sidechain pump: duck the mix bus on every kick, recover in 180ms.
           pumpGain.gain.cancelScheduledValues(time);
@@ -824,17 +927,45 @@
         hatClosed.triggerAttackRelease('16n', time, Math.max(0.3, fv - 0.2));
       } else {
         c = sc[2][st];
-        if (gateCell(c)) snare.triggerAttackRelease('16n', time, c.v);
+        if (gateCell(c)) {
+          if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('snare').volume.value = Tone.gainToDb(c.v); samplePlayers.player('snare').start(time); }
+          else snare.triggerAttackRelease('16n', time, c.v);
+        }
         c = sc[3][st];
-        if (gateCell(c)) hatClosed.triggerAttackRelease('16n', time, c.v);
+        if (gateCell(c)) {
+          if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('hatClosed').volume.value = Tone.gainToDb(c.v); samplePlayers.player('hatClosed').start(time); }
+          else hatClosed.triggerAttackRelease('16n', time, c.v);
+        }
       }
       c = sc[4][st];
-      if (gateCell(c)) hatOpen.triggerAttackRelease('16n', time, c.v);
-      for (var r = 5; r < 10; r++) {
+      if (gateCell(c)) {
+        if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('hatOpen').volume.value = Tone.gainToDb(c.v); samplePlayers.player('hatOpen').start(time); }
+        else hatOpen.triggerAttackRelease('16n', time, c.v);
+      }
+      for (var r = 5; r <= 9; r++) {
         c = sc[r][st];
         if (gateCell(c)) {
-          poly.triggerAttackRelease(noteForRow(r), leadNoteLen, time, c.v);
+          var note = noteForRow(r);
+          if (leadStyle === 'pluck' && leadPlucks.length) {
+            var pl = leadPlucks[leadPluckIdx++ % leadPlucks.length];
+            pl.triggerAttackRelease(note, leadNoteLen, time, c.v);
+          } else if (leadStyle === 'bell') {
+            leadBell.triggerAttackRelease(note, leadNoteLen, time, c.v);
+          } else if (leadStyle === 'duo') {
+            leadDuo.triggerAttackRelease(note, leadNoteLen, time, c.v);
+          } else {
+            poly.triggerAttackRelease(note, leadNoteLen, time, c.v);
+          }
         }
+      }
+      c = sc[10][st];
+      if (gateCell(c)) {
+        if (percVoice === 'metal') percMetal.triggerAttackRelease('16n', time, c.v);
+        else if (percVoice === 'rim') percRim.triggerAttackRelease('16n', time, c.v);
+        else percTom.triggerAttackRelease('G2', '16n', time, c.v);
+      }
+      if (padOn && stepInBar === 0) {
+        padSynth.triggerAttackRelease(chordNotes(), '1m', time, 0.7);
       }
 
       tickRamps();   // per-16th DOM interpolation of active section ramps
@@ -988,11 +1119,15 @@
     wireSlider('level-snare', function (v) { api.setChannelVolume('snare', v); });
     wireSlider('level-hats',  function (v) { api.setChannelVolume('hats', v); });
     wireSlider('level-lead',  function (v) { api.setChannelVolume('lead', v); });
+    wireSlider('level-pad',   function (v) { api.setChannelVolume('pad', v); });
+    wireSlider('level-perc',  function (v) { api.setChannelVolume('perc', v); });
     wireToggle('mute-kick',   function (on) { api.setChannelMute('kick', on); });
     wireToggle('mute-bass',   function (on) { api.setChannelMute('bass', on); });
     wireToggle('mute-snare',  function (on) { api.setChannelMute('snare', on); });
     wireToggle('mute-hats',   function (on) { api.setChannelMute('hats', on); });
     wireToggle('mute-lead',   function (on) { api.setChannelMute('lead', on); });
+    wireToggle('mute-pad',    function (on) { api.setChannelMute('pad', on); });
+    wireToggle('mute-perc',   function (on) { api.setChannelMute('perc', on); });
 
     // Master & groove
     wireSlider('master-volume', function (v) { api.setMasterVolume(v); });
@@ -1004,6 +1139,9 @@
     // Sound design
     wireSelect('drum-kit',     function (v) { api.setDrumKit(v); });
     wireSelect('bass-style',   function (v) { api.setBassStyle(v); });
+    wireSelect('lead-style',   function (v) { mirrorSelect('lead-style'); api.setLeadStyle(v); });
+    wireSelect('perc-voice',   function (v) { mirrorSelect('perc-voice'); api.setPercVoice(v); });
+    wireSelect('delay-style',  function (v) { mirrorSelect('delay-style'); api.setDelayStyle(v); });
     wireSelect('lead-octave',  function (v) { api.setLeadOctave(v); });
     wireSelect('lead-notelen', function (v) { api.setLeadNoteLen(v); });
     wireSlider('glide-amount', function (v) { api.setGlide(v); });
@@ -1014,6 +1152,7 @@
     wireButton('play-btn',   function () { api.play(); });
     wireButton('stop-btn',   function () { api.stop(); });
     wireButton('clear-btn',  function () { api.clearGrid(); });
+    wireButton('clear-all-btn', function () { api.clearAll(); });
     wireButton('random-btn', function () { api.randomizeGrid(); });
 
     // Scenes + bar pager
@@ -1040,6 +1179,9 @@
     mirrorSelect('pattern-length');
     mirrorSelect('playback-mode');
     mirrorSelect('copy-scene-to');
+    mirrorSelect('lead-style');
+    mirrorSelect('perc-voice');
+    mirrorSelect('delay-style');
 
     wireButton('copy-scene-btn', function () {
       var sel = document.getElementById('copy-scene-to');
@@ -1061,6 +1203,7 @@
 
     // Auto fills (groove feature; engine state only)
     wireToggle('fills-toggle', function (on) { api.setAutoFill(on); });
+    wireToggle('pad-toggle', function (on) { api.setPad(on); });
 
     // Song panel: manual escape hatch (the composer tool is the primary editor)
     wireButton('song-apply-btn', function () {
@@ -1185,12 +1328,17 @@
       // Cancel Draw events already queued within the audio lookahead window,
       // otherwise a pending highlightColumn re-adds .playhead after we clear.
       Tone.getDraw().cancel();
+      if (padSynth) padSynth.releaseAll();
+      if (poly) poly.releaseAll();
+      if (leadBell) leadBell.releaseAll();
+      if (leadDuo) leadDuo.releaseAll();
       clearPlayhead();
       // Freeze in-flight section ramps at their current interpolated value.
       freezeRamps();
       var playBtn = document.getElementById('play-btn');
       if (playBtn) playBtn.dataset.state = 'stopped';
       updateSongStatus();
+      applySongStatus({ state: 'idle', text: '\u2014' });
     },
 
     isPlaying: function () {
@@ -1214,6 +1362,30 @@
         for (var s = 0; s < MAX_STEPS; s++) scenes[editScene][r][s] = null;
       }
       refreshGridView();
+    },
+
+    // Full clean slate: every scene, the chain, the song, and all arrangement
+    // state back to defaults. Sound design / mixer / effects are untouched
+    // (matching clearFirst's scope plus the arrangement).
+    clearAll: function () {
+      for (var sc = 0; sc < NUM_SCENES; sc++) {
+        for (var r = 0; r < NUM_ROWS; r++) {
+          for (var s = 0; s < MAX_STEPS; s++) scenes[sc][r][s] = null;
+        }
+      }
+      // setSong rejects empty arrays (a song needs >= 1 section), so empty
+      // the arrangement directly.
+      song.sections = [];
+      songPos = 0;
+      songBar = 0;
+      pendingSongReset = false;
+      var ta = document.getElementById('song-input');
+      if (ta) ta.value = '[]';
+      api.setChain('A');
+      api.setPlaybackMode('loop');   // also refreshes #song-status
+      api.setPatternLength(16);
+      api.setScene('A');
+      api.setEditBar(0);
     },
 
     // Randomizes the edit scene across patternLength (cells at defaults).
@@ -1569,7 +1741,16 @@
 
     setDelayWet: function (v, secs) {
       if (!delay) return;
-      delay.wet.rampTo(v, secs > 0 ? secs : 0.05);
+      var t = secs > 0 ? secs : 0.05;
+      delay.wet.rampTo(delayStyle === 'feedback' ? v : 0, t);
+      if (pingpong) pingpong.wet.rampTo(delayStyle === 'pingpong' ? v : 0, t);
+    },
+
+    setDelayStyle: function (name) {
+      if (name !== 'feedback' && name !== 'pingpong') return;
+      delayStyle = name;
+      var input = document.getElementById('delay-wet');
+      api.setDelayWet(input ? parseFloat(input.value) : 0);
     },
 
     setDistortion: function (v) {
@@ -1658,9 +1839,36 @@
       if (name === 'sub' || name === 'saw' || name === 'acid') bassStyle = name;
     },
 
+    setLeadStyle: function (name) {
+      if (name === 'pluck' && !leadPlucks.length) {
+        // Worklet unavailable (file://) — keep the current style and say so,
+        // mirroring setDrumKit's sampled-kit fallback.
+        if (window.BYODJ_AGENT && window.BYODJ_AGENT.log) {
+          window.BYODJ_AGENT.log('pluck lead style unavailable (needs HTTP); keeping ' + leadStyle);
+        }
+        return;
+      }
+      if (name === 'saw' || name === 'pluck' || name === 'bell' || name === 'duo') leadStyle = name;
+    },
+
+    setPad: function (on) {
+      padOn = !!on;
+      if (!padOn && padSynth) padSynth.releaseAll();
+    },
+
+    setPercVoice: function (name) {
+      if (name === 'tom' || name === 'metal' || name === 'rim') percVoice = name;
+    },
+
     setDrumKit: function (name) {
+      if (name === 'sampled') {
+        if (samplePlayers && samplePlayers.loaded) { drumKitMode = 'sampled'; return; }
+        if (window.BYODJ_AGENT && window.BYODJ_AGENT.log) window.BYODJ_AGENT.log('sampled kit unavailable; using synth kit');
+        return;
+      }
       var kit = DRUM_KITS[name];
       if (!kit || !kick) return;
+      drumKitMode = 'synth';
       kick.set(kit.kick);
       kickNote = kit.kickNote;
       snare.set(kit.snare);
@@ -1933,6 +2141,7 @@
       }
       slider('reverb-wet', comp.reverb, 'reverb');
       slider('delay-wet', comp.delay, 'delay');
+      select('delay-style', comp.delayStyle, 'delayStyle');
       slider('distortion-amount', comp.distortion, 'distortion');
 
       select('waveform-select', comp.waveform, 'waveform');
@@ -1941,6 +2150,8 @@
 
       select('drum-kit', comp.drumKit, 'drumKit');
       select('bass-style', comp.bassStyle, 'bassStyle');
+      select('lead-style', comp.leadStyle, 'leadStyle');
+      select('perc-voice', comp.percVoice, 'percVoice');
       select('lead-octave', comp.leadOctave, 'leadOctave');
       select('lead-notelen', comp.leadNoteLen, 'leadNoteLen');
       slider('glide-amount', comp.glide, 'glide');
@@ -1957,8 +2168,10 @@
         slider('level-snare', comp.mixer.snareVol, 'snareVol');
         slider('level-hats', comp.mixer.hatsVol, 'hatsVol');
         slider('level-lead', comp.mixer.leadVol, 'leadVol');
+        slider('level-pad', comp.mixer.padVol, 'padVol');
+        slider('level-perc', comp.mixer.percVol, 'percVol');
         // Mutes go LAST so a requested drop isn't clobbered by other settings.
-        ['kick', 'bass', 'snare', 'hats', 'lead'].forEach(function (ch) {
+        ['kick', 'bass', 'snare', 'hats', 'lead', 'pad', 'perc'].forEach(function (ch) {
           var want = comp.mixer[ch + 'Mute'];
           if (want === undefined || want === null) return;
           if (typeof want !== 'boolean') {
@@ -1969,8 +2182,8 @@
           if (state === null) warnings.push(ch + 'Mute: control missing');
           else applied.push(ch + 'Mute=' + state);
         });
-        var MIXER_KEYS = ['kickVol', 'bassVol', 'snareVol', 'hatsVol', 'leadVol',
-          'kickMute', 'bassMute', 'snareMute', 'hatsMute', 'leadMute'];
+        var MIXER_KEYS = ['kickVol', 'bassVol', 'snareVol', 'hatsVol', 'leadVol', 'padVol', 'percVol',
+          'kickMute', 'bassMute', 'snareMute', 'hatsMute', 'leadMute', 'padMute', 'percMute'];
         var unknownMixer = Object.keys(comp.mixer).filter(function (k) {
           return MIXER_KEYS.indexOf(k) === -1;
         });
@@ -1979,6 +2192,15 @@
         }
       } else if (comp.mixer !== undefined && comp.mixer !== null) {
         warnings.push('mixer: expected an object with kickVol/bassVol/snareVol/hatsVol/leadVol (dB) and kickMute/bassMute/snareMute/hatsMute/leadMute (boolean), ignored');
+      }
+
+      if (comp.pad !== undefined && comp.pad !== null) {
+        if (typeof comp.pad !== 'boolean') warnings.push('pad: expected boolean, ignored');
+        else {
+          var padState = api.setToggleControl('pad-toggle', comp.pad);
+          if (padState === null) { api.setPad(comp.pad); warnings.push('pad: control missing (engine state set directly)'); }
+          applied.push('pad=' + (comp.pad ? 'on' : 'off'));
+        }
       }
 
       // 10. autoFill — allowed in section overrides (fills during builds).

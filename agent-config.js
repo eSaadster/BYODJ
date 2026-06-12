@@ -20,16 +20,16 @@
 You are operating BYODJ, a DJ/synth web page. You compose by manipulating its controls. You cannot hear audio; reason from control values and music theory.
 
 PAGE LAYOUT:
-- Step sequencer: 16 visible steps x 10 rows of toggle buttons labeled "{name} step {s}". A cell plays when data-state=on; one click toggles it (a fresh click turns it on at velocity 0.9, probability 1). Steps 0-15 run left to right; 0,4,8,12 are the beats. Rows: 0=Kick, 1=Bass, 2=Snare, 3=ClosedHat, 4=OpenHat, 5=LeadRoot, 6=LeadThird, 7=LeadFifth, 8=LeadSeventh (jazzy 7th), 9=LeadHigh (root an octave up). Rows 5-9 play notes from the selected scale; the same step on several lead rows makes a chord.
+- Step sequencer: 16 visible steps x 11 rows of toggle buttons labeled "{name} step {s}". A cell plays when data-state=on; one click toggles it (a fresh click turns it on at velocity 0.9, probability 1). Steps 0-15 run left to right; 0,4,8,12 are the beats. Rows: 0=Kick, 1=Bass, 2=Snare, 3=ClosedHat, 4=OpenHat, 5=LeadRoot, 6=LeadThird, 7=LeadFifth, 8=LeadSeventh (jazzy 7th), 9=LeadHigh (root an octave up), 10=Perc (voice via Perc Voice select). Rows 5-9 play notes from the selected scale; the same step on several lead rows makes a chord.
 - The grid shows ONE bar of ONE scene at a time. "Pattern length" select: 16/32/64 steps = 1/2/4 bars per scene. "Edit bar 1".."Edit bar 4" buttons page which bar the 16 visible cells show and edit (active bar data-state=on; bars past the pattern length are disabled). Visible step s edits that bar's step s.
 - Scenes: "Scene A".."Scene D" buttons pick the scene you edit (and the looped scene in loop mode); the active one has data-state=on. "Copy scene to" select + "Copy scene" button copy the current scene into the target scene - use this to make B/C/D as variations of A.
 - ARRANGE: "Playback mode" select: loop (repeat current scene) | chain | song. "Scene chain" text input takes 1-8 letters A-D, e.g. AABA; click "Apply chain" - chain mode plays scenes in that order. "Song JSON" textarea + "Apply song" button: paste a JSON array of sections {name, scene, bars, root?, scale?, overrides?, ramps?}; sections advance on bar boundaries in song mode. "Song status" is a read-only readout (clicking does nothing); its data-state shows playback position: "idle", "loop A", "chain AABA @2", or "2:breakdwn:B:4/8" (section index : name : scene : bar/bars).
-- MIXER: channel sliders "Kick Vol (dB)", "Bass Vol (dB)", "Snare Vol (dB)", "Hats Vol (dB)", "Lead Vol (dB)" (-24..6, 0=neutral) plus Mute toggle buttons ("Mute Kick" etc; data-state=on means MUTED). Use mutes for drops and breakdowns - never clear a pattern just to silence a part.
+- MIXER: channel sliders "Kick Vol (dB)", "Bass Vol (dB)", "Snare Vol (dB)", "Hats Vol (dB)", "Lead Vol (dB)", "Pad Vol (dB)", "Perc Vol (dB)" (-24..6, 0=neutral) plus Mute toggle buttons ("Mute Kick" etc; data-state=on means MUTED). Use mutes for drops and breakdowns - never clear a pattern just to silence a part.
 - MASTER & GROOVE sliders: Master Vol (dB) -36..6; DJ Filter -100..100 (negative=muffled lowpass sweep, positive=thin highpass sweep, 0=off - the classic DJ build/drop move); Pump 0-1 (mix ducks on every kick: house/EDM breathing); Bitcrush 0-1 (lo-fi grit on the whole mix); Swing 0-0.5 (0=robotic, 0.08=house, 0.18=lofi/hiphop); "Auto fills" toggle (data-state=on): every 4th bar a generated snare/hat fill plays over the last 4 steps without changing your pattern.
-- CONTROLS sliders: Tempo (BPM) 60-200; Filter Cutoff (Hz) 100-10000 (lead brightness, low=dark); Filter Resonance (Q) 0-20; envelope "Env Attack (sec)", "Env Decay (sec)", "Env Sustain (0-1)", "Env Release (sec)" (long attack+release=pads, short=plucky); "Reverb (0 to 1)", "Delay (0 to 1)", "Distortion (0-1)".
-- SOUND DESIGN: Drum Kit (analog, 808=boomy trap, 909=punchy house/techno, lofi=dusty); Bass Style (sub=deep thud, saw=reese/electro, acid=303 squelch); Lead Octave (3=dark, 4, 5=sparkly); Lead Note Length (16n=plucky arp, 8n, 4n, 2n=pads); Glide (seconds) 0-0.3 bass slides (303-style); Chorus 0-1 wide/dreamy.
-- Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe), Root Note (C..B). Every dropdown's CURRENT value is in its data-state (song sections can change Root/Scale while playing).
-- Transport buttons: "Play Sequence", "Stop Sequence", "Clear Grid", "Randomize Grid". Clear and Randomize act on the CURRENT scene only.
+- CONTROLS sliders: Tempo (BPM) 60-200; Filter Cutoff (Hz) 100-10000 (lead brightness, low=dark); Filter Resonance (Q) 0-20; envelope "Env Attack (sec)", "Env Decay (sec)", "Env Sustain (0-1)", "Env Release (sec)" (long attack+release=pads, short=plucky); "Reverb (0 to 1)", "Delay (0 to 1)", "Delay Style" feedback/pingpong, "Distortion (0-1)".
+- SOUND DESIGN: Drum Kit (analog, 808=boomy trap, 909=punchy house/techno, lofi=dusty, sampled=recorded HTTP-only); Bass Style (sub=deep thud, saw=reese/electro, acid=303 squelch); Lead Style (saw/pluck/bell/duo); Pad Layer toggle (sustained chord per bar, follows root/scale); Perc Voice (tom/metal/rim) for the Perc row; Lead Octave (3=dark, 4, 5=sparkly); Lead Note Length (16n=plucky arp, 8n, 4n, 2n=pads); Glide (seconds) 0-0.3 bass slides (303-style); Chorus 0-1 wide/dreamy.
+- Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned, pwm/pulse=hollow movement, fmsine/fmsquare=digital, amsine/amtriangle=soft tremolo), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe), Root Note (C..B). Every dropdown's CURRENT value is in its data-state (song sections can change Root/Scale while playing).
+- Transport buttons: "Play Sequence", "Stop Sequence", "Clear Grid", "Randomize Grid", "Clear All". Clear and Randomize act on the CURRENT scene only; Clear All wipes all four scenes, the chain and the song and returns to loop mode on scene A (sound design and mixer are kept).
 
 GENRE CHEATSHEET (starting points):
 house: 124bpm, kit 909, kick 0,4,8,12, openHat 2,6,10,14, snare 4,12, swing 0.08, bass saw, pump 0.5; arrange AABA where B adds hats/melody.
@@ -53,7 +53,7 @@ You are the composer for BYODJ, a music synthesizer web page. You cannot hear au
 
 Your tool "set_composition" applies an ENTIRE arranged track in one call - tempo, scale, sound design, mixer, effects, four pattern scenes, and a song arrangement - then starts playback.
 
-SEQUENCER: a scene is patternLength steps (16=1 bar, 32=2 bars, 64=4 bars); every bar is 16 sixteenths with beats at 0,4,8,12 (bar 2 beats: 16,20,24,28; etc). Rows: kick, bass (plays the current root), snare, closedHat, openHat, plus melodic rows from the scale - leadRoot, leadThird, leadFifth, leadSeventh (jazzy), leadHigh (root +1 octave); the same step on several lead rows makes a chord.
+SEQUENCER: a scene is patternLength steps (16=1 bar, 32=2 bars, 64=4 bars); every bar is 16 sixteenths with beats at 0,4,8,12 (bar 2 beats: 16,20,24,28; etc). Rows: kick, bass (plays the current root), snare, closedHat, openHat, plus melodic rows from the scale - leadRoot, leadThird, leadFifth, leadSeventh (jazzy), leadHigh (root +1 octave), perc (extra percussion); the same step on several lead rows makes a chord.
 A pattern step is an integer (vel 0.9, prob 1) or {step, vel, prob}: vel 0-1 = loudness (accents 0.9-1, ghost notes 0.3-0.5), prob 0-1 = chance it plays each pass (0.6-0.9 on extra hats/ghosts = human variation every loop).
 
 SCENES: patterns.A-D. Make B/C/D VARIATIONS of A, not new songs: B = A + extra hats/melody (lift), C = A stripped for the breakdown (cut kick or melody, keep a hook), D = peak (busiest hats, octave-up notes, accents).
@@ -68,11 +68,14 @@ SONG: ordered sections {name, scene, bars, root?, scale?, overrides?, ramps?}, s
 
 KEY FIELDS (all optional; omitted = kept):
 - patternLength 16|32|64; tempo 60-200; swing 0-0.5 (0.08 house, 0.18 lofi/hiphop).
-- drumKit analog | 808 (boomy trap) | 909 (punchy house/techno) | lofi (dusty); bassStyle sub | saw (reese) | acid (303 squelch); glide 0-0.3 bass slides.
-- leadOctave "3" dark | "4" | "5" sparkly; leadNoteLen 16n pluck | 8n | 4n | 2n pads; waveform sine soft, triangle mellow, square chiptune, sawtooth bright, fat* huge detuned; envelope ADSR (long attack+release = pads, short = plucky); filterCutoff 100-10000 (low=dark); filterResonance 0-20.
+- drumKit analog | 808 (boomy trap) | 909 (punchy house/techno) | lofi (dusty) | sampled (real recorded kit, HTTP only); bassStyle sub | saw (reese) | acid (303 squelch); glide 0-0.3 bass slides.
+- leadStyle: saw (classic, waveform+envelope apply) | pluck (koto/arp) | bell (FM, icy keys) | duo (thick detuned). delayStyle: feedback | pingpong (wide stereo dub echo).
+- pad: true = sustained chord following the current root/scale, one chord per bar - the glue for intros, breakdowns and ambient. It follows per-section root changes, so progressions sound arranged. Mix at padVol -6 to -12; ducks with pump.
+- perc row: extra percussion; percVoice tom (fills/rolls) | metal (techno ride/bell) | rim (clave).
+- leadOctave "3" dark | "4" | "5" sparkly; leadNoteLen 16n pluck | 8n | 4n | 2n pads; waveform sine soft, triangle mellow, square chiptune, sawtooth bright, fat* huge detuned, pwm/pulse=hollow movement, fmsquare=digital grit, amsine=soft tremolo; envelope ADSR (long attack+release = pads, short = plucky); filterCutoff 100-10000 (low=dark); filterResonance 0-20.
 - scale moods: major happy, minor sad, dorian jazzy, phrygian dark, lydian dreamy, mixolydian funky, harmonicMinor dramatic, blues gritty, pentatonic safe. root C..B.
 - Effects 0-1: reverb, delay, distortion, chorus, crush (lo-fi bitcrush), pump (mix ducks on every kick). djFilter -100..100 (negative = muffled lowpass, positive = thin highpass, 0 = off). masterVolume dB -36..6 (top level, NOT in mixer).
-- mixer: kickVol/bassVol/snareVol/hatsVol/leadVol dB -24..6; kickMute/bassMute/snareMute/hatsMute/leadMute booleans. Mutes keep patterns - the drop/breakdown move, ideal inside section overrides.
+- mixer: kickVol/bassVol/snareVol/hatsVol/leadVol/padVol/percVol dB -24..6; kickMute/bassMute/snareMute/hatsMute/leadMute/padMute/percMute booleans. Mutes keep patterns - the drop/breakdown move, ideal inside section overrides.
 
 GENRE CHEATSHEET (sound + arrangement):
 house: 124, 909, saw bass, pump 0.5, swing 0.08; kick 0,4,8,12, openHat 2,6,10,14, snare 4,12. Song: 4 intro (no kick, djFilter -60) / 8 build (ramp djFilter to 0) / 16 drop / 8 breakdown (kickMute, reverb 0.5) / 16 drop / 4 outro.
@@ -117,7 +120,7 @@ WORKFLOW:
     closedHat: 'Closed hi-hat', openHat: 'Open hi-hat',
     leadRoot: 'Lead: scale root', leadThird: 'Lead: scale third',
     leadFifth: 'Lead: scale fifth', leadSeventh: 'Lead: scale seventh (jazzy)',
-    leadHigh: 'Lead: root one octave up'
+    leadHigh: 'Lead: root one octave up', perc: 'Extra percussion row — voice set by percVoice'
   };
 
   function sceneRowsSchema(withRowDescriptions) {
@@ -187,10 +190,14 @@ WORKFLOW:
       tempo: { type: 'number', description: 'Beats per minute, 60-200' },
       scale: { type: 'string', enum: SCALE_ENUM },
       root: { type: 'string', enum: NOTE_ENUM },
-      waveform: { type: 'string', enum: ['sine', 'square', 'sawtooth', 'triangle', 'fatsawtooth', 'fatsquare', 'fattriangle'], description: 'Lead oscillator: sine=soft, triangle=mellow, square=chiptune, sawtooth=aggressive, fat*=huge detuned' },
+      waveform: { type: 'string', enum: ['sine', 'square', 'sawtooth', 'triangle', 'fatsawtooth', 'fatsquare', 'fattriangle', 'pwm', 'pulse', 'fmsine', 'fmsquare', 'amsine', 'amtriangle'], description: 'Lead oscillator: sine=soft, triangle=mellow, square=chiptune, sawtooth=aggressive, fat*=huge detuned, pwm/pulse=hollow with movement, fmsine/fmsquare=glassy/gritty digital, amsine/amtriangle=soft tremolo-like' },
       swing: { type: 'number', description: 'Shuffle 0-0.5. 0=straight, 0.08=house groove, 0.18=lofi/hiphop' },
-      drumKit: { type: 'string', enum: ['analog', '808', '909', 'lofi'], description: 'Re-voices all drums: 808=boomy trap, 909=punchy house/techno, lofi=dusty' },
+      drumKit: { type: 'string', enum: ['analog', '808', '909', 'lofi', 'sampled'], description: 'Re-voices all drums: 808=boomy trap, 909=punchy house/techno, lofi=dusty, sampled=real recorded kit (HTTP only — falls back to analog on file://)' },
       bassStyle: { type: 'string', enum: ['sub', 'saw', 'acid'], description: 'sub=deep thud, saw=reese/electro, acid=303 squelch' },
+      leadStyle: { type: 'string', enum: ['saw', 'pluck', 'bell', 'duo'], description: 'Lead voice: saw=classic poly (waveform/envelope apply), pluck=koto/arp string, bell=FM icy keys, duo=thick detuned' },
+      delayStyle: { type: 'string', enum: ['feedback', 'pingpong'], description: 'pingpong=wide stereo echo bouncing L/R (dub/space)' },
+      percVoice: { type: 'string', enum: ['tom', 'metal', 'rim'], description: 'tom=fills/rolls, metal=techno ride/bell, rim=clave/woodblock' },
+      pad: { type: 'boolean', description: 'Sustained chord layer following the current root/scale, one chord per bar. The glue for intros/breakdowns/ambient.' },
       leadOctave: { type: 'string', enum: ['3', '4', '5'], description: 'Lead register: 3=dark, 5=sparkly' },
       leadNoteLen: { type: 'string', enum: ['16n', '8n', '4n', '2n'], description: 'Lead note length: 16n=plucky arp, 2n=pads/chords' },
       glide: { type: 'number', description: 'Bass portamento seconds 0-0.3 (303-style slides)' },
@@ -204,9 +211,9 @@ WORKFLOW:
         description: 'Channel volumes in dB (-24..6, 0=neutral) and mutes. Use mutes for drops/breakdowns - patterns are kept.',
         properties: {
           kickVol: { type: 'number' }, bassVol: { type: 'number' }, snareVol: { type: 'number' },
-          hatsVol: { type: 'number' }, leadVol: { type: 'number' },
+          hatsVol: { type: 'number' }, leadVol: { type: 'number' }, padVol: { type: 'number' }, percVol: { type: 'number' },
           kickMute: { type: 'boolean' }, bassMute: { type: 'boolean' }, snareMute: { type: 'boolean' },
-          hatsMute: { type: 'boolean' }, leadMute: { type: 'boolean' }
+          hatsMute: { type: 'boolean' }, leadMute: { type: 'boolean' }, padMute: { type: 'boolean' }, percMute: { type: 'boolean' }
         }
       },
       filterCutoff: { type: 'number', description: 'Low-pass cutoff in Hz, 100-10000. Low=dark/muffled, high=bright' },
@@ -292,6 +299,16 @@ WORKFLOW:
       return summarize('Playback not started (play=false).');
     }
   };
+
+  // ---- Prompt improver: one-shot chat completion (no PageAgent) -----------
+  // Turns a rough idea in the instruction box into a vivid, capability-
+  // exercising ask the composer can act on. Plain natural language out —
+  // the user reviews/edits it before sending.
+  var BYODJ_IMPROVER_PROMPT = `
+You turn a rough music idea into ONE vivid, specific instruction for an AI DJ that programs a synth/sequencer. The DJ can: arrange full songs as named sections (intro/build/drop/breakdown/outro with bar counts) over four 16-64-step pattern scenes (A=main groove, B/C/D=variations); change root/scale per section (chord progressions); ramp parameters over a section (filter sweeps, DJ filter builds); override sounds and mutes per section (drops, pad on/off); accent or ghost individual hits (velocity) and give hits a play-probability so loops breathe; layer a sustained chord pad that follows the key; auto-fill every 4th bar; and choose drum kit (analog/808/909/lofi/sampled), bass style (sub/saw/acid 303), lead voice (saw/pluck/bell/duo), perc voice (tom/metal/rim), delay style (feedback/pingpong), waveform, swing, glide, and effects (reverb, distortion, chorus, bitcrush, sidechain pump).
+
+Rewrite the user's idea as one natural-language ask (a single short paragraph, no JSON, no technical field names) that: names tempo, key and scale mood; describes the main groove concretely (where hits land, what gets accented vs ghosted, what plays only sometimes); demands a full arrangement with named contrasting sections; and includes at least one sweep or build. Keep the user's genre and intent. Reply with the improved prompt text ONLY.
+`.trim();
 
   // ---- DOM helpers --------------------------------------------------------
   function $(id) {
@@ -405,6 +422,13 @@ WORKFLOW:
             ev.preventDefault();
             submit();
           }
+        });
+      }
+
+      var improveBtn = $('improve-btn');
+      if (improveBtn) {
+        improveBtn.addEventListener('click', function () {
+          self.improvePrompt();
         });
       }
 
@@ -562,6 +586,101 @@ WORKFLOW:
       if (panel && typeof panel.hide === 'function') {
         try { panel.hide(); } catch (e) {}
       }
+    },
+
+    // One-shot completion that rewrites the instruction box in place. Reads
+    // the LLM config straight from the inputs (works before Connect); the
+    // result lands back in the textarea for the user to review and Send.
+    improvePrompt: function () {
+      var self = this;
+      var textarea = $('instruction-input');
+      var btn = $('improve-btn');
+      if (!textarea || this._improving) return Promise.resolve();
+      var idea = textarea.value.trim();
+      if (!idea) {
+        this.log('Type a rough idea first (e.g. "djent"), then click Improve.');
+        return Promise.resolve();
+      }
+      var baseURL = (($('llm-base-url') && $('llm-base-url').value) || '').trim().replace(/\/+$/, '');
+      var apiKey = (($('llm-api-key') && $('llm-api-key').value) || '').trim();
+      var model = (($('llm-model') && $('llm-model').value) || '').trim();
+      if (!baseURL || !model) {
+        this.log('Improve needs the LLM Base URL and Model above (no Connect required).');
+        return Promise.resolve();
+      }
+
+      this._improving = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Improving…';
+      }
+      this.log('Improving prompt…');
+
+      var headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers.Authorization = 'Bearer ' + apiKey;
+      var body = {
+        model: model,
+        temperature: 0.8,
+        max_tokens: 500,
+        messages: [
+          { role: 'system', content: BYODJ_IMPROVER_PROMPT },
+          { role: 'user', content: idea }
+        ]
+      };
+
+      // Newer OpenAI models reject legacy params with a 400 naming the param
+      // (max_tokens -> max_completion_tokens; temperature must be default).
+      // Other OpenAI-compatible providers only know the legacy names. Adapt
+      // the request to whatever the endpoint complains about and retry.
+      function attempt(retriesLeft) {
+        return fetch(baseURL + '/chat/completions', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(body)
+        }).then(function (res) {
+          if (res.ok) return res.json();
+          return res.text().then(function (t) {
+            if (res.status === 400 && retriesLeft > 0) {
+              var bad = '';
+              try {
+                var ej = JSON.parse(t);
+                bad = ((ej.error && ej.error.param) || '') + ' ' +
+                      ((ej.error && ej.error.message) || '');
+              } catch (ePar) { bad = String(t); }
+              if (bad.indexOf('max_tokens') !== -1 && body.max_tokens !== undefined) {
+                body.max_completion_tokens = body.max_tokens;
+                delete body.max_tokens;
+                return attempt(retriesLeft - 1);
+              }
+              if (bad.indexOf('max_completion_tokens') !== -1 && body.max_completion_tokens !== undefined) {
+                delete body.max_completion_tokens; // provider knows neither spelling — drop the cap
+                return attempt(retriesLeft - 1);
+              }
+              if (bad.indexOf('temperature') !== -1 && body.temperature !== undefined) {
+                delete body.temperature;
+                return attempt(retriesLeft - 1);
+              }
+            }
+            throw new Error('HTTP ' + res.status + ' ' + String(t).slice(0, 200));
+          });
+        });
+      }
+
+      return attempt(3).then(function (data) {
+        var msg = data && data.choices && data.choices[0] && data.choices[0].message;
+        var text = (msg && typeof msg.content === 'string') ? msg.content.trim() : '';
+        if (!text) throw new Error('the model returned an empty completion');
+        textarea.value = text;
+        self.log('Prompt improved — review it, tweak if you like, then Send.');
+      }).catch(function (err) {
+        self.log('Improve failed: ' + (err && err.message ? err.message : err));
+      }).then(function () {
+        self._improving = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Improve';
+        }
+      });
     },
 
     sendInstruction: function (text) {

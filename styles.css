@@ -12,6 +12,7 @@
   --drum: #ffb02e;
   --drum-soft: rgba(255, 176, 46, 0.14);
   --lead: #e8e6e1;
+  --perc: #7dd3a8;
   --accent: var(--drum);
   --accent-text: #161719;
 
@@ -50,6 +51,7 @@ html[data-theme="light"] {
   --drum: #ffc107;
   --drum-soft: rgba(255, 193, 7, 0.25);
   --lead: #71797E;
+  --perc: #2f7d55;
   --accent: #ffc107;
   --accent-text: #1f1f1f;
 
@@ -200,6 +202,11 @@ h3 {
   border-color: var(--lead);
 }
 
+.cell.on[data-row="10"] {
+  background: var(--perc);
+  border-color: var(--perc);
+}
+
 .cell.playhead {
   outline: 2px solid var(--playhead);
   outline-offset: -1px;
@@ -346,7 +353,7 @@ textarea:focus {
 
 .mixer-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
 }
 

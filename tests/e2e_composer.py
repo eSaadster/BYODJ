@@ -290,12 +290,16 @@ def main():
 
         # 2b. DJ-expansion: grid size + new rows 8/9
         cell_count = page.evaluate("() => document.querySelectorAll('#sequencer-grid .cell').length")
-        if cell_count != 160:
-            failures.append(f"expected 160 cells, got {cell_count}")
+        if cell_count != 176:
+            failures.append(f"expected 176 cells, got {cell_count}")
         if page.get_attribute("#cell-r9-s15", "aria-label") != "LeadHigh step 15":
             failures.append("cell-r9-s15 aria-label wrong: " + str(page.get_attribute("#cell-r9-s15", "aria-label")))
         if page.get_attribute("#cell-r8-s0", "aria-label") != "LeadSeventh step 0":
             failures.append("cell-r8-s0 aria-label wrong: " + str(page.get_attribute("#cell-r8-s0", "aria-label")))
+        if page.get_attribute("#cell-r10-s0", "aria-label") != "Perc step 0":
+            failures.append("cell-r10-s0 aria-label wrong: " + str(page.get_attribute("#cell-r10-s0", "aria-label")))
+        if page.get_attribute("#cell-r10-s15", "aria-label") != "Perc step 15":
+            failures.append("cell-r10-s15 aria-label wrong: " + str(page.get_attribute("#cell-r10-s15", "aria-label")))
         if page.get_attribute("#cell-r9-s0", "data-state") != "on":
             failures.append("leadHigh pattern did not land: cell-r9-s0 data-state != on")
 
