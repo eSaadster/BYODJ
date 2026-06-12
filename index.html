@@ -15,6 +15,51 @@
 
   <section id="sequencer-panel">
     <h2>Sequencer</h2>
+    <div class="seq-toolbar">
+      <div class="tb-group">
+        <span class="tb-label">Scene</span>
+        <button id="scene-btn-a" class="scene-btn" type="button" aria-label="Scene A" data-state="on"  aria-pressed="true">A</button>
+        <button id="scene-btn-b" class="scene-btn" type="button" aria-label="Scene B" data-state="off" aria-pressed="false">B</button>
+        <button id="scene-btn-c" class="scene-btn" type="button" aria-label="Scene C" data-state="off" aria-pressed="false">C</button>
+        <button id="scene-btn-d" class="scene-btn" type="button" aria-label="Scene D" data-state="off" aria-pressed="false">D</button>
+      </div>
+      <div class="tb-group">
+        <label class="tb-label" for="copy-scene-to">Copy to</label>
+        <select id="copy-scene-to" class="tb-select" aria-label="Copy scene to" data-state="B">
+          <option value="A">A</option><option value="B" selected>B</option>
+          <option value="C">C</option><option value="D">D</option>
+        </select>
+        <button id="copy-scene-btn" class="scene-btn" type="button" aria-label="Copy scene">Copy</button>
+      </div>
+      <div class="tb-group">
+        <label class="tb-label" for="chain-input">Chain</label>
+        <input type="text" id="chain-input" aria-label="Scene chain" value="A" maxlength="8" autocomplete="off" spellcheck="false">
+        <button id="chain-apply-btn" class="scene-btn" type="button" aria-label="Apply chain">Apply</button>
+      </div>
+    </div>
+    <div class="seq-toolbar">
+      <div class="tb-group">
+        <label class="tb-label" for="playback-mode">Mode</label>
+        <select id="playback-mode" class="tb-select" aria-label="Playback mode" data-state="loop">
+          <option value="loop" selected>loop</option><option value="chain">chain</option><option value="song">song</option>
+        </select>
+      </div>
+      <div class="tb-group">
+        <label class="tb-label" for="pattern-length">Length</label>
+        <select id="pattern-length" class="tb-select" aria-label="Pattern length" data-state="16">
+          <option value="16" selected>16 steps (1 bar)</option>
+          <option value="32">32 steps (2 bars)</option>
+          <option value="64">64 steps (4 bars)</option>
+        </select>
+      </div>
+      <div class="tb-group" id="bar-pager">
+        <span class="tb-label">Bar</span>
+        <button id="bar-btn-1" class="bar-btn" type="button" aria-label="Edit bar 1" data-state="on"  aria-pressed="true"  data-bar="0">1</button>
+        <button id="bar-btn-2" class="bar-btn" type="button" aria-label="Edit bar 2" data-state="off" aria-pressed="false" data-bar="1" hidden disabled>2</button>
+        <button id="bar-btn-3" class="bar-btn" type="button" aria-label="Edit bar 3" data-state="off" aria-pressed="false" data-bar="2" hidden disabled>3</button>
+        <button id="bar-btn-4" class="bar-btn" type="button" aria-label="Edit bar 4" data-state="off" aria-pressed="false" data-bar="3" hidden disabled>4</button>
+      </div>
+    </div>
     <div id="sequencer-grid"></div>
     <div class="transport">
       <button id="play-btn" aria-label="Play Sequence">&#9654; Play</button>
@@ -100,6 +145,11 @@
         <output id="swing-amount-value" class="val" for="swing-amount">0</output>
       </div>
 
+      <div class="control">
+        <label for="fills-toggle">Auto Fills (every 4th bar)</label>
+        <button id="fills-toggle" class="toggle-btn" type="button" aria-label="Auto fills" data-state="off" aria-pressed="false">Fills</button>
+      </div>
+
     </div>
   </section>
 
@@ -127,43 +177,43 @@
 
       <div class="control">
         <label for="env-attack">Envelope Attack (seconds)</label>
-        <input type="range" id="env-attack" aria-label="Envelope Attack (seconds)" min="0.001" max="2" step="0.001" value="0.01">
+        <input type="range" id="env-attack" aria-label="Env Attack (sec)" min="0.001" max="2" step="0.001" value="0.01">
         <output id="env-attack-value" class="val" for="env-attack">0.01</output>
       </div>
 
       <div class="control">
         <label for="env-decay">Envelope Decay (seconds)</label>
-        <input type="range" id="env-decay" aria-label="Envelope Decay (seconds)" min="0.01" max="2" step="0.01" value="0.2">
+        <input type="range" id="env-decay" aria-label="Env Decay (sec)" min="0.01" max="2" step="0.01" value="0.2">
         <output id="env-decay-value" class="val" for="env-decay">0.2</output>
       </div>
 
       <div class="control">
         <label for="env-sustain">Envelope Sustain (0 to 1)</label>
-        <input type="range" id="env-sustain" aria-label="Envelope Sustain (0 to 1)" min="0" max="1" step="0.01" value="0.5">
+        <input type="range" id="env-sustain" aria-label="Env Sustain (0-1)" min="0" max="1" step="0.01" value="0.5">
         <output id="env-sustain-value" class="val" for="env-sustain">0.5</output>
       </div>
 
       <div class="control">
         <label for="env-release">Envelope Release (seconds)</label>
-        <input type="range" id="env-release" aria-label="Envelope Release (seconds)" min="0.01" max="4" step="0.01" value="0.8">
+        <input type="range" id="env-release" aria-label="Env Release (sec)" min="0.01" max="4" step="0.01" value="0.8">
         <output id="env-release-value" class="val" for="env-release">0.8</output>
       </div>
 
       <div class="control">
         <label for="reverb-wet">Reverb Amount (0 to 1)</label>
-        <input type="range" id="reverb-wet" aria-label="Reverb Amount (0 to 1)" min="0" max="1" step="0.01" value="0.2">
+        <input type="range" id="reverb-wet" aria-label="Reverb (0 to 1)" min="0" max="1" step="0.01" value="0.2">
         <output id="reverb-wet-value" class="val" for="reverb-wet">0.2</output>
       </div>
 
       <div class="control">
         <label for="delay-wet">Delay Amount (0 to 1)</label>
-        <input type="range" id="delay-wet" aria-label="Delay Amount (0 to 1)" min="0" max="1" step="0.01" value="0.15">
+        <input type="range" id="delay-wet" aria-label="Delay (0 to 1)" min="0" max="1" step="0.01" value="0.15">
         <output id="delay-wet-value" class="val" for="delay-wet">0.15</output>
       </div>
 
       <div class="control">
         <label for="distortion-amount">Distortion Amount (0 to 1)</label>
-        <input type="range" id="distortion-amount" aria-label="Distortion Amount (0 to 1)" min="0" max="1" step="0.01" value="0">
+        <input type="range" id="distortion-amount" aria-label="Distortion (0-1)" min="0" max="1" step="0.01" value="0">
         <output id="distortion-amount-value" class="val" for="distortion-amount">0</output>
       </div>
 
@@ -271,6 +321,20 @@
       </div>
 
     </div>
+  </section>
+
+  <section id="song-panel">
+    <h2>Song</h2>
+    <div class="song-row">
+      <textarea id="song-input" rows="5" aria-label="Song JSON" spellcheck="false"
+        placeholder='[{"name":"intro","scene":"A","bars":8},{"name":"drop","scene":"B","bars":16,"root":"F","ramps":{"filterCutoff":{"to":9000,"bars":4}}}]'></textarea>
+      <button id="song-apply-btn" type="button" aria-label="Apply song">Apply</button>
+    </div>
+    <div class="song-readout">
+      <span class="tb-label">Now</span>
+      <button id="song-status" class="status-btn" type="button" aria-label="Song status" data-state="idle">&mdash;</button>
+    </div>
+    <p class="hint">Sections: { name, scene, bars, root?, scale?, overrides?, ramps? }. Set Mode to "song" and press Play. The composer tool is the primary editor; this textarea is the manual escape hatch.</p>
   </section>
 
   <section id="llm-config-panel">

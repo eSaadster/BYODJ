@@ -465,6 +465,119 @@ textarea:focus {
   color: rgba(57, 255, 142, 0.5);
 }
 
+/* ---------- Sequencer toolbar ---------- */
+
+.seq-toolbar {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 0 0 10px;
+}
+
+.tb-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tb-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.scene-btn,
+.bar-btn {
+  padding: 4px 12px;
+  font-size: 0.7rem;
+}
+
+.scene-btn[data-state="on"] {
+  background: var(--cyan);
+  border-color: #8df1ff;
+  color: #0d0b14;
+  box-shadow: 0 0 10px var(--cyan);
+}
+
+.bar-btn[data-state="on"] {
+  background: var(--magenta);
+  border-color: #ff7cc0;
+  color: #0d0b14;
+  box-shadow: 0 0 10px var(--magenta);
+}
+
+.bar-btn[hidden] {
+  display: none;
+}
+
+#chain-input {
+  width: 90px;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
+.tb-select {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+/* ---------- Toggle buttons (fills — same look as mutes) ---------- */
+
+.toggle-btn {
+  padding: 4px 12px;
+  font-size: 0.7rem;
+  align-self: flex-start;
+}
+
+.toggle-btn[data-state="on"] {
+  background: var(--magenta);
+  color: #0d0b14;
+  box-shadow: 0 0 10px var(--magenta);
+}
+
+/* ---------- Velocity tiers (data-vel is NOT serialized by page-agent) ---------- */
+
+.cell.on[data-vel="mid"] {
+  opacity: 0.7;
+}
+
+.cell.on[data-vel="lo"] {
+  opacity: 0.45;
+}
+
+/* ---------- Song panel ---------- */
+
+.song-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+#song-input {
+  flex: 1;
+  resize: vertical;
+  font-size: 0.75rem;
+  min-height: 90px;
+}
+
+.song-readout {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-top: 10px;
+}
+
+#song-status {
+  font-size: 0.78rem;
+  color: var(--terminal-green);
+  text-shadow: 0 0 6px rgba(57, 255, 142, 0.5);
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 900px) {

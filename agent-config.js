@@ -17,30 +17,33 @@
 
   // ---- Pinned system prompt (additive via instructions.system) -----------
   var BYODJ_SYSTEM_PROMPT = `
-You are operating BYODJ, a music synthesizer web page. You compose music by manipulating its controls. You cannot hear audio; reason from control values and music theory.
+You are operating BYODJ, a DJ/synth web page. You compose by manipulating its controls. You cannot hear audio; reason from control values and music theory.
 
 PAGE LAYOUT:
-- Step sequencer: 16 steps x 10 rows of toggle buttons labeled "{name} step {s}". A cell plays when data-state=on; click once to toggle. Steps 0-15 run left to right; 0,4,8,12 are the beats. Rows: 0=Kick, 1=Bass, 2=Snare, 3=ClosedHat, 4=OpenHat, 5=LeadRoot, 6=LeadThird, 7=LeadFifth, 8=LeadSeventh (jazzy 7th), 9=LeadHigh (root an octave up). Rows 5-9 play notes from the selected scale; the same step on several lead rows makes a chord.
+- Step sequencer: 16 visible steps x 10 rows of toggle buttons labeled "{name} step {s}". A cell plays when data-state=on; one click toggles it (a fresh click turns it on at velocity 0.9, probability 1). Steps 0-15 run left to right; 0,4,8,12 are the beats. Rows: 0=Kick, 1=Bass, 2=Snare, 3=ClosedHat, 4=OpenHat, 5=LeadRoot, 6=LeadThird, 7=LeadFifth, 8=LeadSeventh (jazzy 7th), 9=LeadHigh (root an octave up). Rows 5-9 play notes from the selected scale; the same step on several lead rows makes a chord.
+- The grid shows ONE bar of ONE scene at a time. "Pattern length" select: 16/32/64 steps = 1/2/4 bars per scene. "Edit bar 1".."Edit bar 4" buttons page which bar the 16 visible cells show and edit (active bar data-state=on; bars past the pattern length are disabled). Visible step s edits that bar's step s.
+- Scenes: "Scene A".."Scene D" buttons pick the scene you edit (and the looped scene in loop mode); the active one has data-state=on. "Copy scene to" select + "Copy scene" button copy the current scene into the target scene - use this to make B/C/D as variations of A.
+- ARRANGE: "Playback mode" select: loop (repeat current scene) | chain | song. "Scene chain" text input takes 1-8 letters A-D, e.g. AABA; click "Apply chain" - chain mode plays scenes in that order. "Song JSON" textarea + "Apply song" button: paste a JSON array of sections {name, scene, bars, root?, scale?, overrides?, ramps?}; sections advance on bar boundaries in song mode. "Song status" is a read-only readout (clicking does nothing); its data-state shows playback position: "idle", "loop A", "chain AABA @2", or "2:breakdwn:B:4/8" (section index : name : scene : bar/bars).
 - MIXER: channel sliders "Kick Vol (dB)", "Bass Vol (dB)", "Snare Vol (dB)", "Hats Vol (dB)", "Lead Vol (dB)" (-24..6, 0=neutral) plus Mute toggle buttons ("Mute Kick" etc; data-state=on means MUTED). Use mutes for drops and breakdowns - never clear a pattern just to silence a part.
-- MASTER & GROOVE sliders: Master Vol (dB) -36..6; DJ Filter -100..100 (negative=muffled lowpass sweep, positive=thin highpass sweep, 0=off - the classic DJ build/drop move); Pump 0-1 (mix ducks on every kick: house/EDM breathing); Bitcrush 0-1 (lo-fi grit on the whole mix); Swing 0-0.5 (0=robotic, 0.08=house, 0.18=lofi/hiphop).
-- CONTROLS sliders: Tempo (BPM) 60-200; Filter Cutoff (Hz) 100-10000 (lead brightness, low=dark); Filter Resonance (Q) 0-20; Envelope Attack/Decay/Release seconds and Sustain 0-1 (long attack+release=pads, short=plucky); Reverb, Delay, Distortion 0-1.
+- MASTER & GROOVE sliders: Master Vol (dB) -36..6; DJ Filter -100..100 (negative=muffled lowpass sweep, positive=thin highpass sweep, 0=off - the classic DJ build/drop move); Pump 0-1 (mix ducks on every kick: house/EDM breathing); Bitcrush 0-1 (lo-fi grit on the whole mix); Swing 0-0.5 (0=robotic, 0.08=house, 0.18=lofi/hiphop); "Auto fills" toggle (data-state=on): every 4th bar a generated snare/hat fill plays over the last 4 steps without changing your pattern.
+- CONTROLS sliders: Tempo (BPM) 60-200; Filter Cutoff (Hz) 100-10000 (lead brightness, low=dark); Filter Resonance (Q) 0-20; envelope "Env Attack (sec)", "Env Decay (sec)", "Env Sustain (0-1)", "Env Release (sec)" (long attack+release=pads, short=plucky); "Reverb (0 to 1)", "Delay (0 to 1)", "Distortion (0-1)".
 - SOUND DESIGN: Drum Kit (analog, 808=boomy trap, 909=punchy house/techno, lofi=dusty); Bass Style (sub=deep thud, saw=reese/electro, acid=303 squelch); Lead Octave (3=dark, 4, 5=sparkly); Lead Note Length (16n=plucky arp, 8n, 4n, 2n=pads); Glide (seconds) 0-0.3 bass slides (303-style); Chorus 0-1 wide/dreamy.
-- Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe), Root Note (C..B).
-- Transport buttons: "Play Sequence", "Stop Sequence", "Clear Grid", "Randomize Grid".
+- Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe), Root Note (C..B). Every dropdown's CURRENT value is in its data-state (song sections can change Root/Scale while playing).
+- Transport buttons: "Play Sequence", "Stop Sequence", "Clear Grid", "Randomize Grid". Clear and Randomize act on the CURRENT scene only.
 
 GENRE CHEATSHEET (starting points):
-house: 124bpm, kit 909, kick 0,4,8,12, openHat 2,6,10,14, snare 4,12, swing 0.08, bass saw, pump 0.5.
-techno: 134bpm, kit 909, closedHat all 16, phrygian, sawtooth, distortion 0.2, pump 0.3.
+house: 124bpm, kit 909, kick 0,4,8,12, openHat 2,6,10,14, snare 4,12, swing 0.08, bass saw, pump 0.5; arrange AABA where B adds hats/melody.
+techno: 134bpm, kit 909, closedHat all 16, phrygian, sawtooth, distortion 0.2, pump 0.3; long loops, sweep DJ Filter for builds and drops.
 lofi: 78bpm, kit lofi, swing 0.18, bitcrush 0.4, chorus 0.3, triangle, dorian, cutoff 1200, note length 4n.
-trap: 140bpm, kit 808, sparse kick, snare on 8, closedHat runs of consecutive steps, lead octave 5.
-synthwave: 100bpm, fatsawtooth, chorus 0.5, reverb 0.4, minor, note length 8n, octave 3 chords.
+trap: 140bpm, kit 808, sparse kick, snare on 8, closedHat runs of consecutive steps, lead octave 5, Auto fills on.
+synthwave: 100bpm, fatsawtooth, chorus 0.5, reverb 0.4, minor, note length 8n, octave 3 chords; alternate scenes as verse/chorus.
 ambient: 70bpm, few or no drums, lydian, attack 1+, release 3+, note length 2n, reverb 0.7.
 
 RULES:
-1. Translate mood/genre into settings FIRST (tempo, scale, root, kit, bass style, waveform, effects), then program the grid.
-2. Typical patterns: kick 0,4,8,12; snare 4,12; closed hats on even steps; bass locked with kick; melody sparse (4-10 cells across rows 5-9).
-3. Verify each click by re-reading the cell or toggle's data-state. Sliders are set with input_text (a plain number in range); volume sliders are dB and may be negative.
-4. Use "Clear Grid" before a completely new pattern; keep existing cells for tweaks. For drops/breakdowns use Mute buttons.
+1. Translate mood/genre into settings FIRST (tempo, scale, root, kit, bass style, waveform, effects), then program the grid, then arrange (scenes, chain or song, playback mode).
+2. Typical bar: kick 0,4,8,12; snare 4,12; closed hats on even steps; bass locked with kick; melody sparse (4-10 cells across rows 5-9).
+3. Verify each click by re-reading the cell or toggle's data-state. Sliders are set with input_text (a plain number in range); volume sliders are dB and may be negative. Before editing another bar or scene, click its "Edit bar N" or "Scene X" button and confirm data-state=on - the 16 visible cells then show THAT bar of THAT scene.
+4. To build more than a loop: program scene A, use Copy scene to seed B/C/D, vary them (B adds layers, C strips for a breakdown), then set Playback mode to chain and Apply chain with e.g. AABA - or paste sections into Song JSON, click Apply song, and check Song status. Use Mute buttons for drops/breakdowns; use "Clear Grid" only before a completely new pattern (it clears just the current scene).
 5. ALWAYS click "Play Sequence" as your final action before done (it shows data-state=playing while running, data-state=stopped otherwise).
 `.trim();
 
@@ -48,41 +51,142 @@ RULES:
   var BYODJ_COMPOSER_PROMPT = `
 You are the composer for BYODJ, a music synthesizer web page. You cannot hear audio; reason from music theory.
 
-You have a custom tool "set_composition" that applies an ENTIRE composition in one call - tempo, scale, root, sound design, mixer, effects, and the 16-step pattern for all 10 instrument rows - then starts playback.
+Your tool "set_composition" applies an ENTIRE arranged track in one call - tempo, scale, sound design, mixer, effects, four pattern scenes, and a song arrangement - then starts playback.
 
-THE SEQUENCER: 16 steps (0-15) per row; steps 0,4,8,12 are the beats. Drum rows: kick, bass, snare, closedHat, openHat (bass plays the root note). Melodic rows from the selected scale: leadRoot, leadThird, leadFifth, leadSeventh (jazzy), leadHigh (root an octave up) - the same step on several lead rows makes a chord.
+SEQUENCER: a scene is patternLength steps (16=1 bar, 32=2 bars, 64=4 bars); every bar is 16 sixteenths with beats at 0,4,8,12 (bar 2 beats: 16,20,24,28; etc). Rows: kick, bass (plays the current root), snare, closedHat, openHat, plus melodic rows from the scale - leadRoot, leadThird, leadFifth, leadSeventh (jazzy), leadHigh (root +1 octave); the same step on several lead rows makes a chord.
+A pattern step is an integer (vel 0.9, prob 1) or {step, vel, prob}: vel 0-1 = loudness (accents 0.9-1, ghost notes 0.3-0.5), prob 0-1 = chance it plays each pass (0.6-0.9 on extra hats/ghosts = human variation every loop).
 
-KEY FIELDS (all optional; omitted fields keep their current value):
-- drumKit: analog | 808 (boomy trap) | 909 (punchy house/techno) | lofi (dusty). bassStyle: sub (deep thud) | saw (reese/electro) | acid (303 squelch).
-- tempo 60-200; swing 0-0.5 (0=straight, 0.08=house, 0.18=lofi/hiphop).
-- leadOctave "3"|"4"|"5" (3=dark, 5=sparkly); leadNoteLen 16n=plucky arp, 8n, 4n, 2n=pads; glide 0-0.3 (303-style bass slides); waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned); envelope ADSR (long attack+release=pads, short=plucky); filterCutoff 100-10000 (low=dark).
-- scale moods: major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe.
-- Effects 0-1: reverb (space), delay (echo), distortion (grit), chorus (wide/dreamy), crush (lo-fi bitcrush on the whole mix), pump (mix ducks on every kick - house/EDM breathing). djFilter -100..100 (negative=muffled lowpass, positive=thin highpass, 0=off).
-- mixer: channel volumes in dB -24..6 (0=neutral): kickVol, bassVol, snareVol, hatsVol, leadVol; and booleans kickMute, bassMute, snareMute, hatsMute, leadMute. Use mutes for drops/breakdowns - patterns are kept.
-- top-level masterVolume: dB -36..6 (NOT inside mixer).
+SCENES: patterns.A-D. Make B/C/D VARIATIONS of A, not new songs: B = A + extra hats/melody (lift), C = A stripped for the breakdown (cut kick or melody, keep a hook), D = peak (busiest hats, octave-up notes, accents).
 
-GENRE CHEATSHEET (starting points):
-house: tempo 124, drumKit 909, kick [0,4,8,12], openHat [2,6,10,14], snare [4,12], swing 0.08, bassStyle saw, pump 0.5.
-techno: 134, 909, closedHat all 16, phrygian, sawtooth, distortion 0.2, pump 0.3.
-lofi: 78, lofi kit, swing 0.18, crush 0.4, chorus 0.3, triangle, dorian, filterCutoff 1200, leadNoteLen 4n.
-trap: 140, 808, sparse kick, snare [8], closedHat consecutive-step rolls, leadOctave "5".
-synthwave: 100, fatsawtooth, chorus 0.5, reverb 0.4, minor, leadNoteLen 8n, leadOctave "3" chords.
-ambient: 70, few or no drums, lydian, envelope attack 1+, release 3+, leadNoteLen 2n, reverb 0.7.
+PLAYBACK mode: "loop" repeats scene \`scene\`; "chain" follows chain like "AABA" (1-8 letters); "song" follows the song array - use song for any real track.
+
+SONG: ordered sections {name, scene, bars, root?, scale?, overrides?, ramps?}, switching on bar boundaries.
+- Energy curve: intro 4-8 bars (sparse, dark/filtered) -> build 4-8 (add layers, ramp filterCutoff up or djFilter back to 0) -> drop 8-16 (full kit, brightest) -> breakdown 4-8 (kickMute, reverb up) -> build 4 -> drop 8-16 -> outro 4 (strip layers, ramp down). 32-64 bars total is a solid track.
+- Chord progressions: per-section root changes move the WHOLE harmony (bass + all lead rows). In minor, roots A->F->C->G = i-VI-III-VII. 1-2 bars per root reads as a progression; 8+ bars reads as a key change. Keep the scale, change the root.
+- overrides: any non-pattern fields applied at section start (mixer mutes/vols, effects, tempo, drumKit...). ramps: smooth sweeps, e.g. {"filterCutoff":{"to":9000,"bars":8}}; ramp-able: filterCutoff, filterResonance, djFilter, reverb, delay, distortion, chorus, crush, pump, masterVolume.
+- autoFill true: a generated snare/hat fill (rising velocity) plays over the last 4 steps of every 4th bar; your pattern data is untouched.
+
+KEY FIELDS (all optional; omitted = kept):
+- patternLength 16|32|64; tempo 60-200; swing 0-0.5 (0.08 house, 0.18 lofi/hiphop).
+- drumKit analog | 808 (boomy trap) | 909 (punchy house/techno) | lofi (dusty); bassStyle sub | saw (reese) | acid (303 squelch); glide 0-0.3 bass slides.
+- leadOctave "3" dark | "4" | "5" sparkly; leadNoteLen 16n pluck | 8n | 4n | 2n pads; waveform sine soft, triangle mellow, square chiptune, sawtooth bright, fat* huge detuned; envelope ADSR (long attack+release = pads, short = plucky); filterCutoff 100-10000 (low=dark); filterResonance 0-20.
+- scale moods: major happy, minor sad, dorian jazzy, phrygian dark, lydian dreamy, mixolydian funky, harmonicMinor dramatic, blues gritty, pentatonic safe. root C..B.
+- Effects 0-1: reverb, delay, distortion, chorus, crush (lo-fi bitcrush), pump (mix ducks on every kick). djFilter -100..100 (negative = muffled lowpass, positive = thin highpass, 0 = off). masterVolume dB -36..6 (top level, NOT in mixer).
+- mixer: kickVol/bassVol/snareVol/hatsVol/leadVol dB -24..6; kickMute/bassMute/snareMute/hatsMute/leadMute booleans. Mutes keep patterns - the drop/breakdown move, ideal inside section overrides.
+
+GENRE CHEATSHEET (sound + arrangement):
+house: 124, 909, saw bass, pump 0.5, swing 0.08; kick 0,4,8,12, openHat 2,6,10,14, snare 4,12. Song: 4 intro (no kick, djFilter -60) / 8 build (ramp djFilter to 0) / 16 drop / 8 breakdown (kickMute, reverb 0.5) / 16 drop / 4 outro.
+techno: 134, 909, phrygian, sawtooth, distortion 0.2, pump 0.3; closedHat all 16 alternating vel 0.9/0.5. Long 8-16 bar sections, one root or i-VII, djFilter ramp into every drop.
+lofi: 78, lofi kit, swing 0.18, crush 0.4, chorus 0.3, triangle, dorian, cutoff 1200, 4n; hats prob 0.7-0.9, vel 0.4-0.7. Song: 4 intro / 8 A / 8 B (root up a 4th) / 8 A / 4 outro.
+trap: 140, 808, sparse kick, snare on step 8 of each bar, hat rolls = consecutive steps with vel rising 0.4->1, leadOctave "5", autoFill true; 8-bar sections, breakdown = drums muted + leadHigh hook.
+synthwave: 100, fatsawtooth, chorus 0.5, reverb 0.4, minor, 8n, octave "3" chords; i-VI-III-VII via section roots, 2 bars each; verse = sparse chords scene, chorus = scene adding leadHigh + openHat.
+ambient: 70, few or no drums, lydian, attack 1+, release 3+, 2n, reverb 0.7; 8-16 bar sections with drifting roots (e.g. C->F->A) and reverb/cutoff ramps instead of drums.
 
 WORKFLOW:
-1. Decide everything first, then call set_composition ONCE. Brand-new piece: clearFirst=true plus every row you want. Tweak: pass only the fields and rows that change - omitted ones are kept.
-2. Typical pattern: kick 0,4,8,12; snare 4,12; closed hats on even steps; bass locked with kick; melody sparse (4-10 cells across the five lead rows).
-3. The tool starts playback and returns a summary. Then immediately finish the task. Do NOT click page controls or verify cells one by one unless the tool reported an error.
+1. Design the whole track first: genre settings, an energy curve with section bar counts, a root progression, scenes A-D as variations. Then call set_composition ONCE: clearFirst=true, patternLength, patterns, song (or chain), mode, plus all settings.
+2. Pattern craft per bar: kick on the beats; snare 4,12 backbeat; hats between with vel/prob variation; bass locked to the kick; melody sparse (4-10 cells per bar across the lead rows, accents on downbeats).
+3. Tweaks: pass only what changes - omitted fields, rows and scenes are kept, but song is replaced as a WHOLE: resend ALL sections when changing any. Add play:false to tweak without restarting the track (default play:true restarts from bar 0). Top-level "pattern" still edits scene A (legacy).
+4. The tool starts playback and returns a summary. Then finish the task immediately. Do NOT click page controls or verify cells one by one unless the tool reported an error.
 `.trim();
+
+  var NOTE_ENUM = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  var SCALE_ENUM = ['major', 'minor', 'dorian', 'phrygian', 'pentatonic', 'lydian', 'mixolydian', 'harmonicMinor', 'blues'];
+
+  // Shared step-item schema: integer or {step, vel, prob}. NO $ref/$defs —
+  // this schema is embedded verbatim inside page-agent's AgentOutput schema,
+  // so fragment refs would resolve against the wrong document root.
+  function stepItem() {
+    return {
+      anyOf: [
+        { type: 'integer', description: 'step index (vel 0.9, prob 1)' },
+        {
+          type: 'object',
+          required: ['step'],
+          properties: {
+            step: { type: 'integer', description: '0..patternLength-1' },
+            vel: { type: 'number', description: 'velocity 0-1, default 0.9. Accents 0.9-1, ghost notes 0.3-0.5' },
+            prob: { type: 'number', description: 'chance 0-1 this step plays on each pass, default 1' }
+          }
+        }
+      ]
+    };
+  }
+
+  var ROW_DESCRIPTIONS = {
+    kick: 'Kick drum', bass: 'Bass (plays the current root)', snare: 'Snare',
+    closedHat: 'Closed hi-hat', openHat: 'Open hi-hat',
+    leadRoot: 'Lead: scale root', leadThird: 'Lead: scale third',
+    leadFifth: 'Lead: scale fifth', leadSeventh: 'Lead: scale seventh (jazzy)',
+    leadHigh: 'Lead: root one octave up'
+  };
+
+  function sceneRowsSchema(withRowDescriptions) {
+    var props = {};
+    Object.keys(ROW_DESCRIPTIONS).forEach(function (k) {
+      props[k] = { type: 'array', items: stepItem() };
+      if (withRowDescriptions) props[k].description = ROW_DESCRIPTIONS[k];
+    });
+    return { type: 'object', properties: props };
+  }
+
+  var sceneA = sceneRowsSchema(true);  sceneA.description = 'Main scene';
+  var sceneB = sceneRowsSchema(false); sceneB.description = 'Variation of A (same row names as A)';
+  var sceneC = sceneRowsSchema(false); sceneC.description = 'Variation (e.g. breakdown)';
+  var sceneD = sceneRowsSchema(false); sceneD.description = 'Variation (e.g. peak)';
+  var legacyPattern = sceneRowsSchema(true);
+  legacyPattern.description = 'Legacy single-scene pattern: same shape as patterns.A, applies to scene A. Prefer patterns.';
 
   var COMPOSITION_JSON_SCHEMA = {
     type: 'object',
-    description: 'Complete or partial synth composition. Omitted fields keep their current value; pattern rows that are present replace that row entirely, omitted rows are kept.',
+    description: 'Complete or partial composition/arrangement. Omitted fields keep their current value; present pattern rows replace that row in that scene only.',
     properties: {
-      clearFirst: { type: 'boolean', description: 'Clear the whole grid before applying the pattern. Use true for a brand-new composition.' },
+      clearFirst: { type: 'boolean', description: 'Clear ALL scenes before applying. Use true for a brand-new composition.' },
+      patternLength: { type: 'integer', enum: [16, 32, 64], description: 'Steps per scene: 16=1 bar, 32=2 bars, 64=4 bars. A bar is 16 steps; bar 2 starts at step 16. Shared by all scenes.' },
+      scene: { type: 'string', enum: ['A', 'B', 'C', 'D'], description: 'Scene selected for editing and for loop-mode playback. Default A.' },
+      patterns: {
+        type: 'object',
+        description: 'Per-scene patterns. Each scene maps row names to the steps that are ON; a step is an integer or {step, vel, prob}. Present rows replace that row in that scene; omitted rows/scenes are kept. Make B/C/D variations of A.',
+        properties: { A: sceneA, B: sceneB, C: sceneC, D: sceneD }
+      },
+      pattern: legacyPattern,
+      chain: { type: 'string', description: 'Scene order for chain mode: 1-8 letters A-D, e.g. "AABA". Each letter plays that scene for its full patternLength.' },
+      mode: { type: 'string', enum: ['loop', 'chain', 'song'], description: 'loop=repeat selected scene, chain=follow chain string, song=follow the song sections. Use song for a real arranged track.' },
+      autoFill: { type: 'boolean', description: 'When true, every 4th bar gets a generated snare/hat fill with rising velocity over the last 4 steps. Pattern data is untouched.' },
+      song: {
+        type: 'array',
+        description: 'Song-mode arrangement: ordered sections advancing on bar boundaries (1 bar = 16 steps). Set mode to "song". Max 32 sections. Replaces the current song entirely - resend ALL sections when changing any.',
+        items: {
+          type: 'object',
+          required: ['scene', 'bars'],
+          properties: {
+            name: { type: 'string', description: 'Section label shown in Song status, e.g. intro/build/drop/breakdown/outro' },
+            scene: { type: 'string', enum: ['A', 'B', 'C', 'D'], description: 'Scene played during this section' },
+            bars: { type: 'integer', description: 'Section length in bars, 1-64' },
+            root: { type: 'string', enum: NOTE_ENUM, description: 'Root override for this section. Per-section roots create chord progressions and key changes; bass and all lead rows follow.' },
+            scale: { type: 'string', enum: SCALE_ENUM, description: 'Scale override for this section' },
+            overrides: {
+              type: 'object',
+              additionalProperties: true,
+              description: 'Partial composition applied at section start: any top-level fields EXCEPT patterns/pattern/song/chain/mode/scene/play/clearFirst/patternLength. E.g. {"mixer":{"kickMute":true},"reverb":0.5} for a breakdown.'
+            },
+            ramps: {
+              type: 'object',
+              description: 'Smooth sweeps starting at section start, e.g. {"filterCutoff":{"to":9000,"bars":8}}. Ramp-able: filterCutoff, filterResonance, djFilter, reverb, delay, distortion, chorus, crush, pump, masterVolume.',
+              additionalProperties: {
+                type: 'object',
+                required: ['to'],
+                properties: {
+                  to: { type: 'number', description: 'target value in the param\'s normal range' },
+                  bars: { type: 'number', description: 'ramp length in bars; default = the section\'s full length' }
+                }
+              }
+            }
+          }
+        }
+      },
       tempo: { type: 'number', description: 'Beats per minute, 60-200' },
-      scale: { type: 'string', enum: ['major', 'minor', 'dorian', 'phrygian', 'pentatonic', 'lydian', 'mixolydian', 'harmonicMinor', 'blues'] },
-      root: { type: 'string', enum: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] },
+      scale: { type: 'string', enum: SCALE_ENUM },
+      root: { type: 'string', enum: NOTE_ENUM },
       waveform: { type: 'string', enum: ['sine', 'square', 'sawtooth', 'triangle', 'fatsawtooth', 'fatsquare', 'fattriangle'], description: 'Lead oscillator: sine=soft, triangle=mellow, square=chiptune, sawtooth=aggressive, fat*=huge detuned' },
       swing: { type: 'number', description: 'Shuffle 0-0.5. 0=straight, 0.08=house groove, 0.18=lofi/hiphop' },
       drumKit: { type: 'string', enum: ['analog', '808', '909', 'lofi'], description: 'Re-voices all drums: 808=boomy trap, 909=punchy house/techno, lofi=dusty' },
@@ -99,16 +203,10 @@ WORKFLOW:
         type: 'object',
         description: 'Channel volumes in dB (-24..6, 0=neutral) and mutes. Use mutes for drops/breakdowns - patterns are kept.',
         properties: {
-          kickVol: { type: 'number' },
-          bassVol: { type: 'number' },
-          snareVol: { type: 'number' },
-          hatsVol: { type: 'number' },
-          leadVol: { type: 'number' },
-          kickMute: { type: 'boolean' },
-          bassMute: { type: 'boolean' },
-          snareMute: { type: 'boolean' },
-          hatsMute: { type: 'boolean' },
-          leadMute: { type: 'boolean' }
+          kickVol: { type: 'number' }, bassVol: { type: 'number' }, snareVol: { type: 'number' },
+          hatsVol: { type: 'number' }, leadVol: { type: 'number' },
+          kickMute: { type: 'boolean' }, bassMute: { type: 'boolean' }, snareMute: { type: 'boolean' },
+          hatsMute: { type: 'boolean' }, leadMute: { type: 'boolean' }
         }
       },
       filterCutoff: { type: 'number', description: 'Low-pass cutoff in Hz, 100-10000. Low=dark/muffled, high=bright' },
@@ -126,22 +224,6 @@ WORKFLOW:
       reverb: { type: 'number', description: 'Reverb wet amount 0-1 (space)' },
       delay: { type: 'number', description: 'Delay wet amount 0-1 (echo)' },
       distortion: { type: 'number', description: 'Distortion amount 0-1 (grit)' },
-      pattern: {
-        type: 'object',
-        description: 'Step indices (integers 0-15) that are ON per row. Steps 0,4,8,12 are the quarter-note beats.',
-        properties: {
-          kick: { type: 'array', items: { type: 'integer' }, description: 'Kick drum steps' },
-          bass: { type: 'array', items: { type: 'integer' }, description: 'Bass steps (plays the root note)' },
-          snare: { type: 'array', items: { type: 'integer' }, description: 'Snare steps' },
-          closedHat: { type: 'array', items: { type: 'integer' }, description: 'Closed hi-hat steps' },
-          openHat: { type: 'array', items: { type: 'integer' }, description: 'Open hi-hat steps' },
-          leadRoot: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale root' },
-          leadThird: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale third' },
-          leadFifth: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale fifth' },
-          leadSeventh: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: scale seventh (jazzy)' },
-          leadHigh: { type: 'array', items: { type: 'integer' }, description: 'Lead melody: root one octave up' }
-        }
-      },
       play: { type: 'boolean', description: 'Start playback after applying. Default true.' }
     }
   };
@@ -158,6 +240,8 @@ WORKFLOW:
   //     inside applyComposition, which reports problems back to the LLM as
   //     tool output it can react to,
   //   - safeParse(): in case the schema is ever used standalone.
+  // Schema must stay $ref-free: it is embedded inside the AgentOutput
+  // document, so fragment refs would resolve against the wrong root.
   function zodLikeSchema(jsonSchema) {
     var passthrough = function (payload) { return payload; };
     return {
@@ -182,7 +266,7 @@ WORKFLOW:
   }
 
   var SET_COMPOSITION_TOOL = {
-    description: 'Apply a complete musical composition to the synth in ONE call: tempo, scale, root, lead waveform, envelope, effects, and the 16-step pattern per instrument row — then start playback. Strongly prefer this over clicking individual controls.',
+    description: 'Apply a complete musical arrangement to the synth in ONE call: tempo, scale, sound design, mixer, effects, four pattern scenes (A-D, 16/32/64 steps, per-step velocity/probability), a scene chain, and full song-mode sections with per-section roots, overrides and parameter ramps — then start playback. Strongly prefer this over clicking individual controls.',
     inputSchema: zodLikeSchema(COMPOSITION_JSON_SCHEMA),
     execute: function (input) {
       var synth = window.BYODJ_SYNTH;

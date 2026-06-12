@@ -1,4 +1,15 @@
-"""End-to-end test of BYODJ composer mode with a mocked OpenAI endpoint."""
+"""End-to-end test of BYODJ composer + song mode with a mocked OpenAI endpoint.
+
+Covers (in addition to the original composer-mode pins):
+- extended set_composition schema fields reaching the LLM (patterns/chain/song/
+  patternLength/mode/autoFill, anyOf step items with vel/prob; no $ref/$defs)
+- a second mocked exchange whose payload uses scenes + a song arrangement +
+  velocity-object steps, asserted via serialized data-state/value attributes
+- scene/bar/mode/fills controls with correct aria-labels and load defaults
+- bar paging, scene paging + copy-scene, chain-apply validation revert
+- #song-status serialized playback position in song mode
+- back-compat: the OLD payload shape (top-level 16-step pattern) lands on scene A
+"""
 import json
 import threading
 import http.server
@@ -11,6 +22,8 @@ PORT = 8766
 
 requests_seen = []
 
+# Legacy payload shape (back-compat pin): top-level 16-step pattern rows must
+# still apply — they land on scene A.
 COMPOSITION_ARGS = {
     "clearFirst": True,
     "tempo": 128,
@@ -36,15 +49,57 @@ COMPOSITION_ARGS = {
     },
 }
 
+# Song-mode payload: scenes, velocity/probability step objects, chain, song
+# arrangement with a per-section ramp, song playback mode, auto-fills.
+SONG_COMPOSITION_ARGS = {
+    "patternLength": 32,
+    "patterns": {
+        "A": {
+            "kick": [0, 4, 8, 12, 16, 20, 24, 28],
+            "snare": [4, {"step": 12, "vel": 0.4, "prob": 0.8}, 20, 28],
+            "closedHat": [{"step": 2, "vel": 0.3}, {"step": 6, "vel": 0.95}, 10, 14],
+            "openHat": [{"step": 30, "vel": 0.5}],
+        },
+        "B": {
+            "kick": [0, 8, 16, 24],
+            "leadRoot": [{"step": 17, "vel": 0.8}],
+        },
+    },
+    "chain": "AABA",
+    "song": [
+        {"name": "intro", "scene": "A", "bars": 1},
+        {"name": "drop", "scene": "B", "bars": 1,
+         "ramps": {"filterCutoff": {"to": 9000, "bars": 1}}},
+    ],
+    "mode": "song",
+    "autoFill": True,
+}
+
 def llm_response(req_idx):
     if req_idx == 0:
         action = {"set_composition": COMPOSITION_ARGS}
-    else:
+        evaluation = "Starting"
+        memory = "Dark techno at 128bpm in A phrygian"
+        next_goal = "Apply the full composition"
+    elif req_idx == 1:
         action = {"done": {"text": "Dark techno applied", "success": True}}
+        evaluation = "Composition applied successfully"
+        memory = "Dark techno at 128bpm in A phrygian"
+        next_goal = "Finish"
+    elif req_idx == 2:
+        action = {"set_composition": SONG_COMPOSITION_ARGS}
+        evaluation = "Starting song arrangement"
+        memory = "Arranging a 2-section song with scene variations"
+        next_goal = "Apply the song arrangement"
+    else:
+        action = {"done": {"text": "Song arranged", "success": True}}
+        evaluation = "Song arrangement applied successfully"
+        memory = "Song mode running intro/drop sections"
+        next_goal = "Finish"
     agent_output = {
-        "evaluation_previous_goal": "Starting" if req_idx == 0 else "Composition applied successfully",
-        "memory": "Dark techno at 128bpm in A phrygian",
-        "next_goal": "Apply the full composition" if req_idx == 0 else "Finish",
+        "evaluation_previous_goal": evaluation,
+        "memory": memory,
+        "next_goal": next_goal,
         "action": action,
     }
     return {
@@ -98,6 +153,61 @@ def main():
         page.goto(f"http://127.0.0.1:{PORT}/index.html")
         page.wait_for_selector("#cell-r0-s0")
 
+        # 0a. song-mode controls exist with correct aria-labels + load defaults
+        for sel, label in [
+            ("#scene-btn-a", "Scene A"), ("#scene-btn-b", "Scene B"),
+            ("#scene-btn-c", "Scene C"), ("#scene-btn-d", "Scene D"),
+            ("#copy-scene-to", "Copy scene to"), ("#copy-scene-btn", "Copy scene"),
+            ("#chain-input", "Scene chain"), ("#chain-apply-btn", "Apply chain"),
+            ("#playback-mode", "Playback mode"), ("#pattern-length", "Pattern length"),
+            ("#bar-btn-1", "Edit bar 1"), ("#bar-btn-2", "Edit bar 2"),
+            ("#bar-btn-3", "Edit bar 3"), ("#bar-btn-4", "Edit bar 4"),
+            ("#fills-toggle", "Auto fills"), ("#song-input", "Song JSON"),
+            ("#song-apply-btn", "Apply song"), ("#song-status", "Song status"),
+        ]:
+            got = page.get_attribute(sel, "aria-label")
+            if got != label:
+                failures.append(f"{sel} aria-label expected {label!r}, got {got!r}")
+
+        if page.get_attribute("#pattern-length", "data-state") != "16":
+            failures.append("pattern-length data-state default != 16")
+        if page.get_attribute("#playback-mode", "data-state") != "loop":
+            failures.append("playback-mode data-state default != loop")
+        if page.get_attribute("#copy-scene-to", "data-state") != "B":
+            failures.append("copy-scene-to data-state default != B")
+        if page.get_attribute("#scene-btn-a", "data-state") != "on":
+            failures.append("scene-btn-a data-state default != on")
+        for sc in ("b", "c", "d"):
+            if page.get_attribute(f"#scene-btn-{sc}", "data-state") != "off":
+                failures.append(f"scene-btn-{sc} data-state default != off")
+        if page.get_attribute("#bar-btn-1", "data-state") != "on":
+            failures.append("bar-btn-1 data-state default != on")
+        bar_flags = page.evaluate(
+            "() => [2,3,4].map(n => { const b = document.getElementById('bar-btn-'+n);"
+            " return [b.hidden, b.disabled]; })"
+        )
+        for i, (hidden, disabled) in enumerate(bar_flags, start=2):
+            if not hidden or not disabled:
+                failures.append(f"bar-btn-{i} should be hidden+disabled at length 16")
+        if page.get_attribute("#fills-toggle", "data-state") != "off":
+            failures.append("fills-toggle data-state default != off")
+        if page.get_attribute("#song-status", "data-state") != "idle":
+            failures.append("song-status data-state default != idle")
+        if page.get_attribute("#chain-input", "value") != "A":
+            failures.append("chain-input value attribute default != A")
+
+        # 0b. aria-label truncation budget: page-agent truncates attribute
+        # values at 20 chars; EVERY agent-visible label must fit. Only the
+        # interactiveBlacklist panels (#llm-config-panel, #chat-panel) are
+        # exempt — page-agent never serializes them.
+        long_labels = page.evaluate(
+            "() => [...document.querySelectorAll('[aria-label]')]"
+            ".filter(el => !el.closest('#llm-config-panel') && !el.closest('#chat-panel'))"
+            ".map(el => el.getAttribute('aria-label')).filter(l => l.length > 20)"
+        )
+        if long_labels:
+            failures.append("aria-labels over 20-char budget: " + " | ".join(long_labels))
+
         # connect in composer mode (default)
         page.fill("#llm-base-url", "https://mockllm.test/v1")
         page.fill("#llm-api-key", "sk-mock")
@@ -134,13 +244,26 @@ def main():
                 failures.append(f"set_composition absent from AgentOutput schema: {payload[:300]}")
             if '"pattern"' not in payload or '"clearFirst"' not in payload:
                 failures.append(f"composition schema (shim) missing from request: {payload[:500]}")
+            # 1b. song-mode schema surface in the serialized tool payload
+            for token in ('"patterns"', '"patternLength"', '"song"', '"chain"',
+                          '"mode"', '"autoFill"', '"anyOf"', '"vel"', '"prob"'):
+                if token not in payload:
+                    failures.append(f"composition schema missing {token} in serialized tools")
+            for token in ('"$ref"', '"$defs"'):
+                if token in payload:
+                    failures.append(f"serialized tools must stay $ref-free, found {token}")
             if "ask_user" in payload:
                 failures.append("ask_user should be disabled in composer mode")
             all_msgs = json.dumps(requests_seen[0].get("messages", []))
             if "WORKFLOW" not in all_msgs:
                 failures.append("composer system prompt not found in any message")
+            # 1c. composer prompt teaches the new arrangement features
+            if "patterns" not in all_msgs:
+                failures.append("composer prompt does not mention patterns")
+            if "song" not in all_msgs:
+                failures.append("composer prompt does not mention song")
 
-        # 2. composition was applied to the page
+        # 2. composition was applied to the page (legacy payload -> scene A)
         for s in (0, 4, 8, 12):
             if page.get_attribute(f"#cell-r0-s{s}", "data-state") != "on":
                 failures.append(f"kick step {s} not on")
@@ -157,6 +280,13 @@ def main():
             failures.append("scale not phrygian")
         if page.input_value("#root-select") != "A":
             failures.append("root not A")
+
+        # 2a. legacy payload landed on scene A while the grid still shows
+        # scene A / bar 1 with the default 16-step length
+        if page.get_attribute("#scene-btn-a", "data-state") != "on":
+            failures.append("legacy payload should leave scene A selected")
+        if page.get_attribute("#pattern-length", "data-state") != "16":
+            failures.append("legacy payload should keep patternLength 16")
 
         # 2b. DJ-expansion: grid size + new rows 8/9
         cell_count = page.evaluate("() => document.querySelectorAll('#sequencer-grid .cell').length")
@@ -225,6 +355,137 @@ def main():
         if page.get_attribute("#mute-bass", "aria-pressed") != "false":
             failures.append("mute-bass click did not flip aria-pressed back to false")
 
+        # ---------- second composer exchange: scenes + song arrangement ----------
+
+        # stop first so the mode change applies immediately (not bar-queued)
+        page.click("#stop-btn")
+        if page.get_attribute("#play-btn", "data-state") != "stopped":
+            failures.append("play button data-state != stopped after stop click")
+        if page.get_attribute("#song-status", "data-state") != "idle":
+            failures.append("song-status not idle after stop: " + str(page.get_attribute("#song-status", "data-state")))
+
+        page.fill("#instruction-input", "arrange a full song with scene variations")
+        page.click("#send-btn")
+        try:
+            page.wait_for_function(
+                "() => (document.getElementById('agent-log').innerText"
+                ".match(/Done:|Failed:|Agent error:/g) || []).length >= 2",
+                timeout=20000,
+            )
+        except Exception:
+            failures.append("song task never completed; log: " + page.inner_text("#agent-log"))
+
+        if len(requests_seen) != 4:
+            failures.append(f"expected 4 LLM calls after both tasks, got {len(requests_seen)}")
+
+        # 8. song-mode payload landed: serialized data-state/value attributes
+        if page.get_attribute("#pattern-length", "data-state") != "32":
+            failures.append("pattern-length data-state != 32 after song payload: " + str(page.get_attribute("#pattern-length", "data-state")))
+        bar_flags = page.evaluate(
+            "() => [1,2,3,4].map(n => { const b = document.getElementById('bar-btn-'+n);"
+            " return [b.hidden, b.disabled]; })"
+        )
+        if bar_flags[1][0] or bar_flags[1][1]:
+            failures.append("bar-btn-2 should be visible+enabled at patternLength 32")
+        if not (bar_flags[2][0] and bar_flags[2][1] and bar_flags[3][0] and bar_flags[3][1]):
+            failures.append("bar-btn-3/4 should stay hidden+disabled at patternLength 32")
+        if page.get_attribute("#chain-input", "value") != "AABA":
+            failures.append("chain-input value attribute != AABA: " + str(page.get_attribute("#chain-input", "value")))
+        if page.get_attribute("#playback-mode", "data-state") != "song":
+            failures.append("playback-mode data-state != song: " + str(page.get_attribute("#playback-mode", "data-state")))
+        if page.get_attribute("#fills-toggle", "data-state") != "on":
+            failures.append("fills-toggle data-state != on after autoFill:true")
+        if page.get_attribute("#fills-toggle", "aria-pressed") != "true":
+            failures.append("fills-toggle aria-pressed != true after autoFill:true")
+        song_json = page.input_value("#song-input")
+        if not song_json.strip():
+            failures.append("song-input textarea empty after song payload (normalized JSON expected)")
+        elif "intro" not in song_json or "drop" not in song_json:
+            failures.append("song-input normalized JSON missing section names: " + song_json[:200])
+
+        # 8b. patterns.A bar 1 is visible (edit scene A, bar 1) with vel tiers
+        for sel, want in [("#cell-r0-s0", "on"), ("#cell-r0-s4", "on"),
+                          ("#cell-r2-s4", "on"), ("#cell-r3-s2", "on")]:
+            if page.get_attribute(sel, "data-state") != want:
+                failures.append(f"{sel} expected data-state {want} after patterns.A")
+        if page.get_attribute("#cell-r3-s2", "data-vel") != "lo":
+            failures.append("cell-r3-s2 (vel 0.3) data-vel != lo: " + str(page.get_attribute("#cell-r3-s2", "data-vel")))
+        if page.get_attribute("#cell-r3-s6", "data-vel") != "hi":
+            failures.append("cell-r3-s6 (vel 0.95) data-vel != hi: " + str(page.get_attribute("#cell-r3-s6", "data-vel")))
+        if page.get_attribute("#cell-r2-s12", "title") != "vel 0.40 prob 0.80":
+            failures.append("cell-r2-s12 title (vel/prob tooltip) wrong: " + str(page.get_attribute("#cell-r2-s12", "title")))
+        # openHat lives only at step 30 (bar 2) — invisible from bar 1
+        if page.get_attribute("#cell-r4-s14", "data-state") != "off":
+            failures.append("cell-r4-s14 should be off in bar 1 (openHat only at step 30)")
+
+        # 9. song mode auto-played; #song-status serializes the position as
+        # {idx}:{name}:{scene}:{bar}/{bars}
+        if page.get_attribute("#play-btn", "data-state") != "playing":
+            failures.append("play button data-state != playing after song payload")
+        try:
+            page.wait_for_function(
+                "() => /^\\d+:[^:]{0,8}:[A-D]:\\d+\\/\\d+$/.test("
+                "document.getElementById('song-status').getAttribute('data-state'))",
+                timeout=10000,
+            )
+        except Exception:
+            failures.append("song-status never showed song position: " + str(page.get_attribute("#song-status", "data-state")))
+        page.click("#stop-btn")
+        if page.get_attribute("#song-status", "data-state") != "idle":
+            failures.append("song-status did not return to idle after stop: " + str(page.get_attribute("#song-status", "data-state")))
+
+        # 10. bar paging: the visible 16 cells re-page to bar 2 (steps 16-31)
+        page.click("#bar-btn-2")
+        if page.get_attribute("#bar-btn-2", "data-state") != "on":
+            failures.append("bar-btn-2 data-state != on after click")
+        if page.get_attribute("#bar-btn-1", "data-state") != "off":
+            failures.append("bar-btn-1 data-state != off after switching to bar 2")
+        if page.get_attribute("#cell-r4-s14", "data-state") != "on":
+            failures.append("cell-r4-s14 should be on in bar 2 (openHat step 30)")
+        if page.get_attribute("#cell-r0-s0", "data-state") != "on":
+            failures.append("cell-r0-s0 should be on in bar 2 (kick step 16)")
+        page.click("#bar-btn-1")
+        if page.get_attribute("#bar-btn-1", "data-state") != "on":
+            failures.append("bar-btn-1 data-state != on after clicking back")
+        if page.get_attribute("#cell-r4-s14", "data-state") != "off":
+            failures.append("cell-r4-s14 should be off again after returning to bar 1")
+
+        # 11. scene paging + copy scene
+        page.click("#scene-btn-b")
+        if page.get_attribute("#scene-btn-b", "data-state") != "on":
+            failures.append("scene-btn-b data-state != on after click")
+        if page.get_attribute("#scene-btn-a", "data-state") != "off":
+            failures.append("scene-btn-a data-state != off after selecting B")
+        if page.get_attribute("#cell-r0-s0", "data-state") != "on":
+            failures.append("scene B kick step 0 should be on")
+        if page.get_attribute("#cell-r0-s4", "data-state") != "off":
+            failures.append("scene B kick step 4 should be off (B is a sparser variation)")
+        page.click("#scene-btn-a")
+        if page.get_attribute("#cell-r0-s4", "data-state") != "on":
+            failures.append("scene A kick step 4 should be on again after switching back")
+        page.select_option("#copy-scene-to", "C")
+        if page.get_attribute("#copy-scene-to", "data-state") != "C":
+            failures.append("copy-scene-to data-state mirror != C after select")
+        page.click("#copy-scene-btn")
+        page.click("#scene-btn-c")
+        if page.get_attribute("#scene-btn-c", "data-state") != "on":
+            failures.append("scene-btn-c data-state != on after click")
+        if page.get_attribute("#cell-r0-s4", "data-state") != "on":
+            failures.append("scene C should mirror scene A after copy (kick step 4)")
+        if page.get_attribute("#cell-r3-s2", "data-vel") != "lo":
+            failures.append("scene C copy lost velocity tier on cell-r3-s2")
+
+        # 12. chain apply validation: invalid input reverts the serialized
+        # value attribute to the last good chain
+        page.fill("#chain-input", "AXBA")
+        page.click("#chain-apply-btn")
+        if page.get_attribute("#chain-input", "value") != "AABA":
+            failures.append("chain-input value attribute did not revert to AABA: " + str(page.get_attribute("#chain-input", "value")))
+        if page.input_value("#chain-input") != "AABA":
+            failures.append("chain-input field did not revert to AABA: " + page.input_value("#chain-input"))
+
+        # ---------- end of song-mode additions ----------
+
         # 7. theater mode reconnect sanity: mode swap rebuilds the agent
         page.select_option("#mode-select", "theater")
         page.wait_for_timeout(300)
@@ -234,6 +495,10 @@ def main():
         has_agent = page.evaluate("() => !!window.BYODJ_AGENT.agent")
         if not has_agent:
             failures.append("agent missing after theater reconnect")
+
+        log = page.inner_text("#agent-log")
+        if log.count("set_composition") < 2:
+            failures.append("log missing the second set_composition entry")
 
         real_errors = [e for e in console_errors if "favicon" not in e]
         if real_errors:
