@@ -1094,6 +1094,23 @@
     if (scaleSel && SCALES[scaleSel.value]) currentScale = scaleSel.value;
     var rootSel = document.getElementById('root-select');
     if (rootSel && rootSel.value) currentRoot = rootSel.value;
+
+    var themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) {
+      var syncTheme = function () {
+        var t = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        themeBtn.dataset.state = t;
+        themeBtn.setAttribute('aria-pressed', t === 'light' ? 'true' : 'false');
+        themeBtn.textContent = t === 'light' ? 'Dark' : 'Light';
+      };
+      themeBtn.addEventListener('click', function () {
+        var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next);
+        try { window.localStorage.setItem('byodj.theme', next); } catch (e) {}
+        syncTheme();
+      });
+      syncTheme();
+    }
   }
 
   // ---------------------------------------------------------- public API

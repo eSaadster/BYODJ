@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BYODJ — Bring Your Own DJ</title>
+  <script>
+    try {
+      document.documentElement.setAttribute('data-theme',
+        localStorage.getItem('byodj.theme') === 'light' ? 'light' : 'dark');
+    } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,6 +18,7 @@
   <section id="header">
     <h1>BYODJ</h1>
     <p class="tagline">Bring Your Own DJ — a PageAgent-powered synth that composes music from natural language.</p>
+    <button id="theme-toggle" aria-label="Color theme" data-state="dark" aria-pressed="false">Light</button>
   </section>
 
   <section id="sequencer-panel">
