@@ -75,6 +75,7 @@
       <button id="clear-btn" aria-label="Clear Grid">Clear</button>
       <button id="clear-all-btn" aria-label="Clear All">Clear All</button>
       <button id="random-btn" aria-label="Randomize Grid">Random</button>
+      <button id="export-midi-btn" aria-label="Export MIDI">Export MIDI</button>
     </div>
   </section>
 
@@ -87,6 +88,10 @@
         <input type="range" id="level-kick" aria-label="Kick Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-kick-value" class="val" for="level-kick">0</output>
         <button id="mute-kick" class="mute-btn" aria-label="Mute Kick" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-kick" class="mute-btn solo-btn" aria-label="Solo Kick" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-kick">Kick Pan</label>
+        <input type="range" id="pan-kick" aria-label="Kick Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-kick-value" class="val" for="pan-kick">0</output>
       </div>
 
       <div class="mixer-strip">
@@ -94,6 +99,10 @@
         <input type="range" id="level-bass" aria-label="Bass Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-bass-value" class="val" for="level-bass">0</output>
         <button id="mute-bass" class="mute-btn" aria-label="Mute Bass" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-bass" class="mute-btn solo-btn" aria-label="Solo Bass" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-bass">Bass Pan</label>
+        <input type="range" id="pan-bass" aria-label="Bass Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-bass-value" class="val" for="pan-bass">0</output>
       </div>
 
       <div class="mixer-strip">
@@ -101,6 +110,10 @@
         <input type="range" id="level-snare" aria-label="Snare Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-snare-value" class="val" for="level-snare">0</output>
         <button id="mute-snare" class="mute-btn" aria-label="Mute Snare" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-snare" class="mute-btn solo-btn" aria-label="Solo Snare" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-snare">Snare Pan</label>
+        <input type="range" id="pan-snare" aria-label="Snare Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-snare-value" class="val" for="pan-snare">0</output>
       </div>
 
       <div class="mixer-strip">
@@ -108,6 +121,10 @@
         <input type="range" id="level-hats" aria-label="Hats Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-hats-value" class="val" for="level-hats">0</output>
         <button id="mute-hats" class="mute-btn" aria-label="Mute Hats" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-hats" class="mute-btn solo-btn" aria-label="Solo Hats" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-hats">Hats Pan</label>
+        <input type="range" id="pan-hats" aria-label="Hats Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-hats-value" class="val" for="pan-hats">0</output>
       </div>
 
       <div class="mixer-strip">
@@ -115,6 +132,10 @@
         <input type="range" id="level-lead" aria-label="Lead Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-lead-value" class="val" for="level-lead">0</output>
         <button id="mute-lead" class="mute-btn" aria-label="Mute Lead" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-lead" class="mute-btn solo-btn" aria-label="Solo Lead" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-lead">Lead Pan</label>
+        <input type="range" id="pan-lead" aria-label="Lead Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-lead-value" class="val" for="pan-lead">0</output>
       </div>
 
       <div class="mixer-strip">
@@ -122,6 +143,10 @@
         <input type="range" id="level-pad" aria-label="Pad Vol (dB)" min="-24" max="6" step="1" value="-6">
         <output id="level-pad-value" class="val" for="level-pad">-6</output>
         <button id="mute-pad" class="mute-btn" aria-label="Mute Pad" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-pad" class="mute-btn solo-btn" aria-label="Solo Pad" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-pad">Pad Pan</label>
+        <input type="range" id="pan-pad" aria-label="Pad Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-pad-value" class="val" for="pan-pad">0</output>
       </div>
 
       <div class="mixer-strip">
@@ -129,6 +154,10 @@
         <input type="range" id="level-perc" aria-label="Perc Vol (dB)" min="-24" max="6" step="1" value="0">
         <output id="level-perc-value" class="val" for="level-perc">0</output>
         <button id="mute-perc" class="mute-btn" aria-label="Mute Perc" data-state="off" aria-pressed="false">Mute</button>
+        <button id="solo-perc" class="mute-btn solo-btn" aria-label="Solo Perc" data-state="off" aria-pressed="false">Solo</button>
+        <label for="pan-perc">Perc Pan</label>
+        <input type="range" id="pan-perc" aria-label="Perc Pan" min="-1" max="1" step="0.05" value="0">
+        <output id="pan-perc-value" class="val" for="pan-perc">0</output>
       </div>
 
     </div>
@@ -166,6 +195,30 @@
         <label for="swing-amount">Swing (0 to 0.5)</label>
         <input type="range" id="swing-amount" aria-label="Swing (0 to 0.5)" min="0" max="0.5" step="0.01" value="0">
         <output id="swing-amount-value" class="val" for="swing-amount">0</output>
+      </div>
+
+      <div class="control">
+        <label for="humanize-amount">Humanize (0 to 1)</label>
+        <input type="range" id="humanize-amount" aria-label="Humanize (0 to 1)" min="0" max="1" step="0.01" value="0">
+        <output id="humanize-amount-value" class="val" for="humanize-amount">0</output>
+      </div>
+
+      <div class="control">
+        <label for="eq-low">EQ Low (dB)</label>
+        <input type="range" id="eq-low" aria-label="EQ Low (dB)" min="-12" max="12" step="0.5" value="0">
+        <output id="eq-low-value" class="val" for="eq-low">0</output>
+      </div>
+
+      <div class="control">
+        <label for="eq-mid">EQ Mid (dB)</label>
+        <input type="range" id="eq-mid" aria-label="EQ Mid (dB)" min="-12" max="12" step="0.5" value="0">
+        <output id="eq-mid-value" class="val" for="eq-mid">0</output>
+      </div>
+
+      <div class="control">
+        <label for="eq-high">EQ High (dB)</label>
+        <input type="range" id="eq-high" aria-label="EQ High (dB)" min="-12" max="12" step="0.5" value="0">
+        <output id="eq-high-value" class="val" for="eq-high">0</output>
       </div>
 
       <div class="control">
@@ -334,6 +387,9 @@
           <option value="pluck">pluck</option>
           <option value="bell">bell</option>
           <option value="duo">duo</option>
+          <option value="seaboard">seaboard</option>
+          <option value="keys">keys</option>
+          <option value="piano">piano</option>
         </select>
       </div>
 
@@ -349,6 +405,16 @@
       <div class="control">
         <label for="pad-toggle">Pad Layer</label>
         <button id="pad-toggle" class="toggle-btn" type="button" aria-label="Pad Layer" data-state="off" aria-pressed="false">Pad</button>
+      </div>
+
+      <div class="control">
+        <label for="pad-voice">Pad Voice</label>
+        <select id="pad-voice" aria-label="Pad Voice" data-state="warm">
+          <option value="warm" selected>warm</option>
+          <option value="glass">glass</option>
+          <option value="strings">strings</option>
+          <option value="dark">dark</option>
+        </select>
       </div>
 
       <div class="control">

@@ -387,6 +387,13 @@ textarea:focus {
   box-shadow: var(--shadow-active);
 }
 
+.solo-btn[data-state="on"] {
+  background: var(--lead);
+  border-color: var(--lead);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-active);
+}
+
 #dj-filter {
   background: linear-gradient(90deg, var(--drum), var(--bg-cell) 50%, var(--lead));
 }

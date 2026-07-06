@@ -133,10 +133,12 @@
   // Tone nodes (created in init)
   var kick, bass, snare, hatClosed, hatOpen, poly;
   var leadPlucks = [], leadPluckIdx = 0, leadBell, leadDuo, padSynth, padFilter;
+  var leadSea, leadKeys, seaVibrato, keysChorus, keysTremolo, keysComp;
+  var pianoSampler, pianoReverb;    // sampled grand (HTTP-only) + its own space
   var percTom, percMetal, percRim, samplePlayers;
   var filter, dist, delay, pingpong, reverb;
   var bassSaw, bassAcid, chorus, pumpGain, crusher, djHP, djLP;
-  var comp, masterVol, limiter;
+  var comp, eq3, masterVol, limiter;
   var channels = {};         // kick|bass|snare|hats|lead|pad|perc -> Tone.Channel
   var repeatId = null;
   var initialized = false;
@@ -152,6 +154,25 @@
   var kickNote = 'C1';       // re-voiced by setDrumKit()
   var leadNoteLen = '16n';   // '16n' | '8n' | '4n' | '2n'
   var leadOct = '4';         // '3' | '4' | '5'
+  var padVoice = 'warm';     // 'warm' | 'glass' | 'strings' | 'dark'
+  var humanizeAmt = 0;       // 0..1 timing/velocity micro-variation
+
+  // Pad re-voicing bundles applied via .set() (same pattern as DRUM_KITS);
+  // padFilterHz is applied to padFilter.frequency.
+  var PAD_VOICES = {
+    warm:    { padFilterHz: 1200,
+      set: { oscillator: { type: 'fatsawtooth' },
+             envelope: { attack: 0.6, decay: 0.3, sustain: 0.8, release: 2.5 } } },
+    glass:   { padFilterHz: 3200,
+      set: { oscillator: { type: 'triangle' },
+             envelope: { attack: 0.9, decay: 0.5, sustain: 0.6, release: 3 } } },
+    strings: { padFilterHz: 2200,
+      set: { oscillator: { type: 'sawtooth' },
+             envelope: { attack: 1.2, decay: 0.4, sustain: 0.9, release: 3.5 } } },
+    dark:    { padFilterHz: 700,
+      set: { oscillator: { type: 'fattriangle' },
+             envelope: { attack: 0.8, decay: 0.3, sustain: 0.8, release: 3 } } }
+  };
 
   // Drum-kit voicing bundles applied via .set() — nodes are never rebuilt.
   var DRUM_KITS = {
@@ -742,11 +763,16 @@
         pluckOpt.title = 'pluck needs HTTP (AudioWorklet cannot load from file://)';
       }
     }
+    // "Bell" — glassy FM mallet/celeste. Inharmonic ratio + fast-decaying
+    // modulator = struck-metal shimmer, longer body than before.
     leadBell = new Tone.PolySynth(Tone.FMSynth, {
-      harmonicity: 3.01,
-      modulationIndex: 14,
-      envelope: { attack: 0.01, decay: 0.5, sustain: 0.25, release: 1.8 },
-      volume: -8
+      harmonicity: 3.51,
+      modulationIndex: 11,
+      oscillator: { type: 'sine' },
+      modulation: { type: 'triangle' },
+      modulationEnvelope: { attack: 0.001, decay: 0.35, sustain: 0, release: 0.4 },
+      envelope: { attack: 0.001, decay: 1.4, sustain: 0.08, release: 2.4 },
+      volume: -7
     });
     leadDuo = new Tone.PolySynth(Tone.DuoSynth, {
       vibratoAmount: 0,
@@ -755,6 +781,68 @@
       volume: -9
     });
     leadDuo.maxPolyphony = 8;
+
+    // "Seaboard" lead: fat detuned saws, soft bloom, gentle vibrato — the
+    // closest a fixed-grid synth gets to a ROLI-style expressive voice
+    // (per-cell velocity supplies the pressure dimension).
+    leadSea = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'fatsawtooth', count: 3, spread: 40 },
+      envelope: { attack: 0.06, decay: 0.4, sustain: 0.75, release: 1.6 },
+      volume: -9
+    });
+    leadSea.maxPolyphony = 16;
+    seaVibrato = new Tone.Vibrato(5, 0.08);
+
+    // "Keys" — a proper Rhodes/e-piano: FM bell attack (harmonicity 1, the
+    // classic tine ratio) with a percussive modulator that decays fast into a
+    // warm sine body, then a gentle chorus + slow tremolo for that vintage
+    // wurli shimmer. Sounds nothing like the saw leads.
+    leadKeys = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 1,
+      modulationIndex: 6,
+      oscillator: { type: 'sine' },
+      modulation: { type: 'sine' },
+      modulationEnvelope: { attack: 0.001, decay: 0.12, sustain: 0, release: 0.2 },
+      envelope: { attack: 0.002, decay: 1.1, sustain: 0.35, release: 1.1 },
+      volume: -6
+    });
+    leadKeys.maxPolyphony = 16;
+    keysChorus = new Tone.Chorus(1.2, 3.5, 0.35).start();
+    keysChorus.wet.value = 0.5;
+    keysTremolo = new Tone.Tremolo(4.5, 0.18).start();
+    keysComp = new Tone.Compressor({ threshold: -20, ratio: 2.5, attack: 0.005, release: 0.15 });
+
+    // "Piano" — a real multi-sampled grand (Salamander, the set the Tone.js
+    // piano uses). HTTP-only like the sampled kit; falls back to the FM keys
+    // at trigger time on file://. Gets its OWN plate reverb and bypasses the
+    // resonant lead filter/distortion — a grand wants air, not a squelchy LP.
+    pianoReverb = new Tone.Reverb({ decay: 1.8, preDelay: 0.008, wet: 0.22 });
+    pianoReverb.ready.catch(function () {});
+    if (window.location.protocol !== 'file:') {
+      try {
+        pianoSampler = new Tone.Sampler({
+          urls: {
+            A1: 'A1.mp3', C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3',
+            A2: 'A2.mp3', C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3',
+            A3: 'A3.mp3', C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3',
+            A4: 'A4.mp3', C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3',
+            A5: 'A5.mp3', C6: 'C6.mp3'
+          },
+          baseUrl: 'https://tonejs.github.io/audio/salamander/',
+          release: 1.4,
+          volume: -4
+        });
+      } catch (ePiano) {
+        console.warn('BYODJ_SYNTH: piano Sampler creation failed', ePiano);
+        pianoSampler = null;
+      }
+    } else {
+      var pianoOpt = document.querySelector('#lead-style option[value="piano"]');
+      if (pianoOpt) {
+        pianoOpt.disabled = true;
+        pianoOpt.title = 'piano needs HTTP (samples cannot load from file://)';
+      }
+    }
 
     padSynth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'fatsawtooth' },
@@ -825,6 +913,7 @@
     }
     djHP = new Tone.Filter(20, 'highpass', -12);
     djLP = new Tone.Filter(20000, 'lowpass', -12);
+    eq3 = new Tone.EQ3(0, 0, 0);
     comp = new Tone.Compressor({ threshold: -18, ratio: 3, attack: 0.01, release: 0.2 });
     masterVol = new Tone.Volume(0);
     limiter = new Tone.Limiter(-1);
@@ -847,8 +936,16 @@
 
     poly.chain(filter, dist, chorus, delay, pingpong, reverb, channels.lead);
     for (var lpi = 0; lpi < leadPlucks.length; lpi++) leadPlucks[lpi].chain(filter);
-    leadBell.chain(filter);
     leadDuo.chain(filter);
+    leadSea.chain(seaVibrato, filter);
+    // Bright voices skip the resonant lead low-pass (which muffles their
+    // character) and land post-filter so they still pick up chorus/delay/
+    // reverb from the shared lead FX tail.
+    leadBell.connect(dist);
+    leadKeys.chain(keysChorus, keysTremolo, keysComp, dist);
+    // Piano is fully independent: dedicated plate reverb straight to the
+    // lead channel, untouched by filter/distortion/chorus.
+    if (pianoSampler) pianoSampler.chain(pianoReverb, channels.lead);
     channels.lead.connect(pumpGain);
 
     padSynth.chain(padFilter, channels.pad);
@@ -859,7 +956,7 @@
     percRim.connect(channels.perc);
     channels.perc.connect(pumpGain);
 
-    pumpGain.chain(crusher, djHP, djLP, comp, masterVol, limiter, Tone.getDestination());
+    pumpGain.chain(crusher, djHP, djLP, eq3, comp, masterVol, limiter, Tone.getDestination());
 
     if (window.location.protocol !== 'file:') {
       try {
@@ -888,6 +985,16 @@
     var transport = Tone.getTransport();
     transport.bpm.value = 120;
     transport.swingSubdivision = '16n';
+
+    // Humanize: late-only timing jitter (never before `time` — the transport
+    // has already passed it) + gentle velocity wobble. Kick/bass stay tight.
+    function hTime(time) {
+      return humanizeAmt ? time + Math.random() * humanizeAmt * 0.02 : time;
+    }
+    function hVel(v) {
+      return humanizeAmt
+        ? clamp01(v * (1 + (Math.random() - 0.5) * 0.24 * humanizeAmt)) : v;
+    }
 
     repeatId = transport.scheduleRepeat(function (time) {
       var st = playStep;             // absolute step within the PLAYING scene
@@ -928,41 +1035,55 @@
       } else {
         c = sc[2][st];
         if (gateCell(c)) {
-          if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('snare').volume.value = Tone.gainToDb(c.v); samplePlayers.player('snare').start(time); }
-          else snare.triggerAttackRelease('16n', time, c.v);
+          if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('snare').volume.value = Tone.gainToDb(hVel(c.v)); samplePlayers.player('snare').start(hTime(time)); }
+          else snare.triggerAttackRelease('16n', hTime(time), hVel(c.v));
         }
         c = sc[3][st];
         if (gateCell(c)) {
-          if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('hatClosed').volume.value = Tone.gainToDb(c.v); samplePlayers.player('hatClosed').start(time); }
-          else hatClosed.triggerAttackRelease('16n', time, c.v);
+          if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('hatClosed').volume.value = Tone.gainToDb(hVel(c.v)); samplePlayers.player('hatClosed').start(hTime(time)); }
+          else hatClosed.triggerAttackRelease('16n', hTime(time), hVel(c.v));
         }
       }
       c = sc[4][st];
       if (gateCell(c)) {
-        if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('hatOpen').volume.value = Tone.gainToDb(c.v); samplePlayers.player('hatOpen').start(time); }
-        else hatOpen.triggerAttackRelease('16n', time, c.v);
+        if (drumKitMode === 'sampled' && samplePlayers) { samplePlayers.player('hatOpen').volume.value = Tone.gainToDb(hVel(c.v)); samplePlayers.player('hatOpen').start(hTime(time)); }
+        else hatOpen.triggerAttackRelease('16n', hTime(time), hVel(c.v));
       }
       for (var r = 5; r <= 9; r++) {
         c = sc[r][st];
         if (gateCell(c)) {
           var note = noteForRow(r);
+          var lt = hTime(time);
+          var lv = hVel(c.v);
           if (leadStyle === 'pluck' && leadPlucks.length) {
             var pl = leadPlucks[leadPluckIdx++ % leadPlucks.length];
-            pl.triggerAttackRelease(note, leadNoteLen, time, c.v);
+            pl.triggerAttackRelease(note, leadNoteLen, lt, lv);
           } else if (leadStyle === 'bell') {
-            leadBell.triggerAttackRelease(note, leadNoteLen, time, c.v);
+            leadBell.triggerAttackRelease(note, leadNoteLen, lt, lv);
           } else if (leadStyle === 'duo') {
-            leadDuo.triggerAttackRelease(note, leadNoteLen, time, c.v);
+            leadDuo.triggerAttackRelease(note, leadNoteLen, lt, lv);
+          } else if (leadStyle === 'seaboard') {
+            leadSea.triggerAttackRelease(note, leadNoteLen, lt, lv);
+          } else if (leadStyle === 'keys') {
+            leadKeys.triggerAttackRelease(note, leadNoteLen, lt, lv);
+          } else if (leadStyle === 'piano') {
+            // A grand rings past the step — hold at least an 8th so it sings.
+            var plen = (leadNoteLen === '16n') ? '8n' : leadNoteLen;
+            if (pianoSampler && pianoSampler.loaded) {
+              pianoSampler.triggerAttackRelease(note, plen, lt, lv);
+            } else {
+              leadKeys.triggerAttackRelease(note, plen, lt, lv);
+            }
           } else {
-            poly.triggerAttackRelease(note, leadNoteLen, time, c.v);
+            poly.triggerAttackRelease(note, leadNoteLen, lt, lv);
           }
         }
       }
       c = sc[10][st];
       if (gateCell(c)) {
-        if (percVoice === 'metal') percMetal.triggerAttackRelease('16n', time, c.v);
-        else if (percVoice === 'rim') percRim.triggerAttackRelease('16n', time, c.v);
-        else percTom.triggerAttackRelease('G2', '16n', time, c.v);
+        if (percVoice === 'metal') percMetal.triggerAttackRelease('16n', hTime(time), hVel(c.v));
+        else if (percVoice === 'rim') percRim.triggerAttackRelease('16n', hTime(time), hVel(c.v));
+        else percTom.triggerAttackRelease('G2', '16n', hTime(time), hVel(c.v));
       }
       if (padOn && stepInBar === 0) {
         padSynth.triggerAttackRelease(chordNotes(), '1m', time, 0.7);
@@ -1128,6 +1249,16 @@
     wireToggle('mute-lead',   function (on) { api.setChannelMute('lead', on); });
     wireToggle('mute-pad',    function (on) { api.setChannelMute('pad', on); });
     wireToggle('mute-perc',   function (on) { api.setChannelMute('perc', on); });
+    ['kick', 'bass', 'snare', 'hats', 'lead', 'pad', 'perc'].forEach(function (ch) {
+      wireSlider('pan-' + ch, function (v) { api.setChannelPan(ch, v); });
+      wireToggle('solo-' + ch, function (on) { api.setChannelSolo(ch, on); });
+    });
+
+    // Master EQ + humanize
+    wireSlider('eq-low',  function (v) { api.setEq('low', v); });
+    wireSlider('eq-mid',  function (v) { api.setEq('mid', v); });
+    wireSlider('eq-high', function (v) { api.setEq('high', v); });
+    wireSlider('humanize-amount', function (v) { api.setHumanize(v); });
 
     // Master & groove
     wireSlider('master-volume', function (v) { api.setMasterVolume(v); });
@@ -1141,6 +1272,7 @@
     wireSelect('bass-style',   function (v) { api.setBassStyle(v); });
     wireSelect('lead-style',   function (v) { mirrorSelect('lead-style'); api.setLeadStyle(v); });
     wireSelect('perc-voice',   function (v) { mirrorSelect('perc-voice'); api.setPercVoice(v); });
+    wireSelect('pad-voice',    function (v) { mirrorSelect('pad-voice'); api.setPadVoice(v); });
     wireSelect('delay-style',  function (v) { mirrorSelect('delay-style'); api.setDelayStyle(v); });
     wireSelect('lead-octave',  function (v) { api.setLeadOctave(v); });
     wireSelect('lead-notelen', function (v) { api.setLeadNoteLen(v); });
@@ -1181,7 +1313,10 @@
     mirrorSelect('copy-scene-to');
     mirrorSelect('lead-style');
     mirrorSelect('perc-voice');
+    mirrorSelect('pad-voice');
     mirrorSelect('delay-style');
+
+    wireButton('export-midi-btn', function () { api.exportMidi(); });
 
     wireButton('copy-scene-btn', function () {
       var sel = document.getElementById('copy-scene-to');
@@ -1332,6 +1467,9 @@
       if (poly) poly.releaseAll();
       if (leadBell) leadBell.releaseAll();
       if (leadDuo) leadDuo.releaseAll();
+      if (leadSea) leadSea.releaseAll();
+      if (leadKeys) leadKeys.releaseAll();
+      if (pianoSampler && pianoSampler.loaded) pianoSampler.releaseAll();
       clearPlayhead();
       // Freeze in-flight section ramps at their current interpolated value.
       freezeRamps();
@@ -1848,7 +1986,37 @@
         }
         return;
       }
-      if (name === 'saw' || name === 'pluck' || name === 'bell' || name === 'duo') leadStyle = name;
+      if (name === 'piano' && (!pianoSampler || !pianoSampler.loaded)) {
+        // Samples still loading or HTTP-unavailable: accept the style (it
+        // falls back to the Rhodes voice per-note) but tell the user.
+        if (window.BYODJ_AGENT && window.BYODJ_AGENT.log) {
+          window.BYODJ_AGENT.log(pianoSampler
+            ? 'piano samples still loading — using e-piano until they finish'
+            : 'piano samples unavailable (needs HTTP); using e-piano');
+        }
+      }
+      if (name === 'saw' || name === 'pluck' || name === 'bell' || name === 'duo' ||
+          name === 'seaboard' || name === 'keys' || name === 'piano') leadStyle = name;
+    },
+
+    setPadVoice: function (name) {
+      var voice = PAD_VOICES[name];
+      if (!voice || !padSynth) return;
+      padVoice = name;
+      padSynth.set(voice.set);
+      if (padFilter) padFilter.frequency.rampTo(voice.padFilterHz, 0.05);
+    },
+
+    setHumanize: function (v) {
+      if (typeof v === 'number' && isFinite(v)) humanizeAmt = clamp01(v);
+    },
+
+    setEq: function (band, db) {
+      if (!eq3 || typeof db !== 'number' || !isFinite(db)) return;
+      db = Math.max(-12, Math.min(12, db));
+      if (band === 'low') eq3.low.rampTo(db, 0.05);
+      else if (band === 'mid') eq3.mid.rampTo(db, 0.05);
+      else if (band === 'high') eq3.high.rampTo(db, 0.05);
     },
 
     setPad: function (on) {
@@ -1896,6 +2064,111 @@
       var channel = channels[ch];
       if (!channel) return;
       channel.mute = !!muted;
+    },
+
+    setChannelPan: function (ch, pan) {
+      var channel = channels[ch];
+      if (!channel || typeof pan !== 'number' || !isFinite(pan)) return;
+      channel.pan.rampTo(Math.max(-1, Math.min(1, pan)), 0.05);
+    },
+
+    setChannelSolo: function (ch, solo) {
+      var channel = channels[ch];
+      if (!channel) return;
+      channel.solo = !!solo;
+    },
+
+    // Export the current arrangement as a Standard MIDI File download.
+    // Loop mode: one pass of the edit scene. Chain: each chained scene once.
+    // Song: every section, bar by bar. Drums land on channel 10 with GM
+    // notes; bass ch2; lead rows ch1 in the current root/scale/octave.
+    exportMidi: function () {
+      if (!initialized) return;
+      var TPQ = 480, TICKS_16TH = TPQ / 4;
+      var GM = { kick: 36, snare: 38, closedHat: 42, openHat: 46 };
+      var percNote = percVoice === 'metal' ? 56 : percVoice === 'rim' ? 37 : 45;
+      var leadLenSteps = { '16n': 1, '8n': 2, '4n': 4, '2n': 8 }[leadNoteLen] || 1;
+      var tempoInput = document.getElementById('tempo-slider');
+      var bpm = tempoInput ? parseFloat(tempoInput.value) : 120;
+      if (!isFinite(bpm) || bpm <= 0) bpm = 120;
+
+      // Flatten the playback arrangement into (scene, bars) segments.
+      var segs = [];
+      var barsPerScene = patternLength / 16;
+      if (playbackMode === 'chain') {
+        for (var ci = 0; ci < chain.length; ci++) segs.push({ scene: chain[ci], bars: barsPerScene });
+      } else if (playbackMode === 'song' && song.sections.length) {
+        for (var si = 0; si < song.sections.length; si++) {
+          segs.push({ scene: song.sections[si].scene, bars: song.sections[si].bars });
+        }
+      } else {
+        segs.push({ scene: editScene, bars: barsPerScene });
+      }
+
+      // Collect note events as {tick, on, note, vel, chan}.
+      var events = [];
+      function addNote(tick, note, vel, chan, lenTicks) {
+        events.push({ tick: tick, on: true, note: note, vel: Math.max(1, Math.round(vel * 127)), chan: chan });
+        events.push({ tick: tick + lenTicks, on: false, note: note, vel: 0, chan: chan });
+      }
+      var barTick = 0;
+      for (var g = 0; g < segs.length; g++) {
+        var sc = scenes[segs[g].scene];
+        for (var b = 0; b < segs[g].bars; b++) {
+          var sceneBar = b % barsPerScene;
+          for (var s2 = 0; s2 < 16; s2++) {
+            var abs = sceneBar * 16 + s2;
+            var tick = barTick + s2 * TICKS_16TH;
+            var cell;
+            if ((cell = sc[0][abs])) addNote(tick, GM.kick, cell.v, 9, TICKS_16TH);
+            if ((cell = sc[1][abs])) addNote(tick, Tone.Frequency(currentRoot + '1').toMidi(), cell.v, 1, TICKS_16TH);
+            if ((cell = sc[2][abs])) addNote(tick, GM.snare, cell.v, 9, TICKS_16TH);
+            if ((cell = sc[3][abs])) addNote(tick, GM.closedHat, cell.v, 9, TICKS_16TH);
+            if ((cell = sc[4][abs])) addNote(tick, GM.openHat, cell.v, 9, TICKS_16TH);
+            for (var lr = 5; lr <= 9; lr++) {
+              if ((cell = sc[lr][abs])) {
+                addNote(tick, Tone.Frequency(noteForRow(lr)).toMidi(), cell.v, 0, TICKS_16TH * leadLenSteps);
+              }
+            }
+            if ((cell = sc[10][abs])) addNote(tick, percNote, cell.v, 9, TICKS_16TH);
+          }
+          barTick += 16 * TICKS_16TH;
+        }
+      }
+      if (!events.length) { agentLog('Export MIDI: nothing to export (grid is empty).'); return; }
+      // Stable sort: tick asc, note-offs before note-ons at the same tick.
+      events.sort(function (a, b) { return a.tick - b.tick || (a.on ? 1 : 0) - (b.on ? 1 : 0); });
+
+      var bytes = [];
+      function vlq(n) {
+        var stack = [n & 0x7f];
+        while ((n >>= 7)) stack.push((n & 0x7f) | 0x80);
+        while (stack.length) bytes.push(stack.pop());
+      }
+      // Tempo meta event
+      var mpq = Math.round(60000000 / bpm);
+      bytes.push(0, 0xff, 0x51, 0x03, (mpq >> 16) & 0xff, (mpq >> 8) & 0xff, mpq & 0xff);
+      var prevTick = 0;
+      for (var e = 0; e < events.length; e++) {
+        var ev = events[e];
+        vlq(ev.tick - prevTick);
+        prevTick = ev.tick;
+        bytes.push((ev.on ? 0x90 : 0x80) | ev.chan, ev.note & 0x7f, ev.vel & 0x7f);
+      }
+      bytes.push(0, 0xff, 0x2f, 0);   // end of track
+
+      function u32(n) { return [(n >> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]; }
+      var header = [0x4d, 0x54, 0x68, 0x64].concat(u32(6), [0, 0, 0, 1, (TPQ >> 8) & 0xff, TPQ & 0xff]);
+      var track = [0x4d, 0x54, 0x72, 0x6b].concat(u32(bytes.length), bytes);
+      var blob = new Blob([new Uint8Array(header.concat(track))], { type: 'audio/midi' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'byodj.mid';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      agentLog('Exported byodj.mid (' + segs.length + ' segment' + (segs.length === 1 ? '' : 's') + ' at ' + Math.round(bpm) + ' bpm).');
     },
 
     // Drives a wireToggle()-style button to the requested state by clicking
@@ -2152,6 +2425,15 @@
       select('bass-style', comp.bassStyle, 'bassStyle');
       select('lead-style', comp.leadStyle, 'leadStyle');
       select('perc-voice', comp.percVoice, 'percVoice');
+      select('pad-voice', comp.padVoice, 'padVoice');
+      slider('humanize-amount', comp.humanize, 'humanize');
+      if (comp.eq && typeof comp.eq === 'object' && !Array.isArray(comp.eq)) {
+        slider('eq-low', comp.eq.low, 'eqLow');
+        slider('eq-mid', comp.eq.mid, 'eqMid');
+        slider('eq-high', comp.eq.high, 'eqHigh');
+      } else if (comp.eq !== undefined && comp.eq !== null) {
+        warnings.push('eq: expected an object with low/mid/high dB numbers, ignored');
+      }
       select('lead-octave', comp.leadOctave, 'leadOctave');
       select('lead-notelen', comp.leadNoteLen, 'leadNoteLen');
       slider('glide-amount', comp.glide, 'glide');
@@ -2170,20 +2452,27 @@
         slider('level-lead', comp.mixer.leadVol, 'leadVol');
         slider('level-pad', comp.mixer.padVol, 'padVol');
         slider('level-perc', comp.mixer.percVol, 'percVol');
-        // Mutes go LAST so a requested drop isn't clobbered by other settings.
         ['kick', 'bass', 'snare', 'hats', 'lead', 'pad', 'perc'].forEach(function (ch) {
-          var want = comp.mixer[ch + 'Mute'];
-          if (want === undefined || want === null) return;
-          if (typeof want !== 'boolean') {
-            warnings.push(ch + 'Mute: expected boolean, ignored');
-            return;
-          }
-          var state = api.setToggleControl('mute-' + ch, want);
-          if (state === null) warnings.push(ch + 'Mute: control missing');
-          else applied.push(ch + 'Mute=' + state);
+          slider('pan-' + ch, comp.mixer[ch + 'Pan'], ch + 'Pan');
+        });
+        // Mutes/solos go LAST so a requested drop isn't clobbered by other settings.
+        ['kick', 'bass', 'snare', 'hats', 'lead', 'pad', 'perc'].forEach(function (ch) {
+          ['Mute', 'Solo'].forEach(function (kind) {
+            var want = comp.mixer[ch + kind];
+            if (want === undefined || want === null) return;
+            if (typeof want !== 'boolean') {
+              warnings.push(ch + kind + ': expected boolean, ignored');
+              return;
+            }
+            var state = api.setToggleControl(kind.toLowerCase() + '-' + ch, want);
+            if (state === null) warnings.push(ch + kind + ': control missing');
+            else applied.push(ch + kind + '=' + state);
+          });
         });
         var MIXER_KEYS = ['kickVol', 'bassVol', 'snareVol', 'hatsVol', 'leadVol', 'padVol', 'percVol',
-          'kickMute', 'bassMute', 'snareMute', 'hatsMute', 'leadMute', 'padMute', 'percMute'];
+          'kickMute', 'bassMute', 'snareMute', 'hatsMute', 'leadMute', 'padMute', 'percMute',
+          'kickPan', 'bassPan', 'snarePan', 'hatsPan', 'leadPan', 'padPan', 'percPan',
+          'kickSolo', 'bassSolo', 'snareSolo', 'hatsSolo', 'leadSolo', 'padSolo', 'percSolo'];
         var unknownMixer = Object.keys(comp.mixer).filter(function (k) {
           return MIXER_KEYS.indexOf(k) === -1;
         });
