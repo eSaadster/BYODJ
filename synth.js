@@ -1115,12 +1115,38 @@
 
   // ---------------------------------------------------------- control wiring
 
+  // Page-load default of every wired control, captured at wire time (before
+  // any user/agent writes). Used by resetSoundControls() for the clean-slate
+  // reset — wireSlider rewrites the value attribute on every input, so the
+  // DOM's defaultValue can't be trusted later.
+  var sliderDefaults = {};
+  var selectDefaults = {};
+  var toggleDefaults = {};
+
+  // Drives every wired slider/select/toggle back to its page-load default
+  // through the normal control pathways, so the engine, <output>s and the
+  // serialized attributes the agent reads all stay in sync. Disabled
+  // controls (crush on file://) are skipped by setRangeControl.
+  function resetSoundControls() {
+    var id;
+    for (id in sliderDefaults) {
+      if (sliderDefaults.hasOwnProperty(id)) setRangeControl(id, sliderDefaults[id]);
+    }
+    for (id in selectDefaults) {
+      if (selectDefaults.hasOwnProperty(id)) setSelectControl(id, selectDefaults[id]);
+    }
+    for (id in toggleDefaults) {
+      if (toggleDefaults.hasOwnProperty(id)) api.setToggleControl(id, toggleDefaults[id]);
+    }
+  }
+
   function wireSlider(id, handler) {
     var input = document.getElementById(id);
     if (!input) {
       console.error('BYODJ_SYNTH: #' + id + ' not found');
       return;
     }
+    sliderDefaults[id] = parseFloat(input.value);
     var output = document.getElementById(id + '-value');
     var apply = function () {
       var v = parseFloat(input.value);
@@ -1176,6 +1202,7 @@
       console.error('BYODJ_SYNTH: #' + id + ' not found');
       return;
     }
+    selectDefaults[id] = sel.value;
     // EVERY select mirrors its value into data-state at wire time and on each
     // change: selects have no auto-synced value attribute, and song sections
     // mutate root/scale at runtime (enterSection -> setSelectControl
@@ -1209,6 +1236,7 @@
     if (btn.dataset.state !== 'on' && btn.dataset.state !== 'off') {
       btn.dataset.state = 'off';
     }
+    toggleDefaults[id] = (btn.dataset.state === 'on');
     btn.setAttribute('aria-pressed', btn.dataset.state === 'on' ? 'true' : 'false');
     btn.addEventListener('click', function () {
       var isOn = btn.dataset.state !== 'on';
@@ -1502,15 +1530,12 @@
       refreshGridView();
     },
 
-    // Full clean slate: every scene, the chain, the song, and all arrangement
-    // state back to defaults. Sound design / mixer / effects are untouched
-    // (matching clearFirst's scope plus the arrangement).
+    // Full clean slate: every scene, the chain, the song, all arrangement
+    // state AND every sound control (mixer, master, groove, sound design,
+    // effects, tempo, scale/root) back to page-load defaults. Also the scope
+    // of the composer's clearFirst, so a new song never inherits leftovers.
     clearAll: function () {
-      for (var sc = 0; sc < NUM_SCENES; sc++) {
-        for (var r = 0; r < NUM_ROWS; r++) {
-          for (var s = 0; s < MAX_STEPS; s++) scenes[sc][r][s] = null;
-        }
-      }
+      clearAllScenes();
       // setSong rejects empty arrays (a song needs >= 1 section), so empty
       // the arrangement directly.
       song.sections = [];
@@ -1524,6 +1549,7 @@
       api.setPatternLength(16);
       api.setScene('A');
       api.setEditBar(0);
+      resetSoundControls();
     },
 
     // Randomizes the edit scene across patternLength (cells at defaults).
@@ -2310,14 +2336,16 @@
         }
       }
 
-      // 1. clearFirst — clears ALL FOUR scenes ("brand-new piece" intent).
+      // 1. clearFirst — full clean slate ("brand-new piece" intent): all four
+      // scenes, chain/song/arrangement, and every sound control back to
+      // defaults, so nothing from the previous piece bleeds into this one.
+      // Runs FIRST, so every field in this comp is applied on top of it.
       if (!noPattern && comp.clearFirst !== undefined && comp.clearFirst !== null) {
         if (typeof comp.clearFirst !== 'boolean') {
           warnings.push('clearFirst: expected boolean, ignored');
         } else if (comp.clearFirst) {
-          clearAllScenes();
-          refreshGridView();
-          applied.push('all scenes cleared');
+          api.clearAll();
+          applied.push('full reset (scenes, arrangement, mixer, sound design, effects)');
         }
       }
 
