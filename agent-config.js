@@ -30,6 +30,7 @@ PAGE LAYOUT:
 - SOUND DESIGN: Drum Kit (analog, 808=boomy trap, 909=punchy house/techno, lofi=dusty, sampled=recorded HTTP-only); Bass Style (sub=deep thud, saw=reese/electro, acid=303 squelch); Lead Style (saw=filter-swept poly/pluck/bell=glassy celeste/duo/seaboard=fat expressive ROLI-style bloom/keys=warm Rhodes e-piano/piano=REAL sampled acoustic grand with reverb - use for piano-like & emotional leads; piano & keys ignore Filter Cutoff); Pad Layer toggle (sustained chord per bar, follows root/scale) + Pad Voice (warm/glass/strings/dark); Perc Voice (tom/metal/rim) for the Perc row; Lead Octave (3=dark, 4, 5=sparkly); Lead Note Length (16n=plucky arp, 8n, 4n, 2n=pads); Glide (seconds) 0-0.3 bass slides (303-style); Chorus 0-1 wide/dreamy.
 - Dropdowns: Lead Waveform (sine=soft, triangle=mellow, square=chiptune, sawtooth=bright, fatsawtooth/fatsquare/fattriangle=huge detuned, pwm/pulse=hollow movement, fmsine/fmsquare=digital, amsine/amtriangle=soft tremolo), Scale (major=happy, minor=sad, dorian=jazzy, phrygian=dark, lydian=dreamy, mixolydian=funky, harmonicMinor=dramatic, blues=gritty, pentatonic=safe), Root Note (C..B). Every dropdown's CURRENT value is in its data-state (song sections can change Root/Scale while playing).
 - Transport buttons: "Play Sequence", "Stop Sequence", "Clear Grid", "Randomize Grid", "Clear All", "Export MIDI" (downloads the current arrangement as a .mid file - only click when asked). Clear and Randomize act on the CURRENT scene only; Clear All is a FULL clean slate: all four scenes, the chain and the song, back to loop mode on scene A, AND every mixer/master/groove/sound-design/effects/tempo/scale control back to its default. Click Clear All before starting a completely different song so nothing from the old one bleeds through.
+- The page also has a TRACE MONITOR (oscilloscope display) and a PIANO KEYBOARD module: both are for the human performer, not for composing. Ignore them; program music only through the sequencer grid, dropdowns, sliders and transport described above.
 
 GENRE CHEATSHEET (starting points):
 house: 124bpm, kit 909, kick 0,4,8,12, openHat 2,6,10,14, snare 4,12, swing 0.08, bass saw, pump 0.5; arrange AABA where B adds hats/melody.
@@ -505,6 +506,10 @@ Rewrite the user's idea as one natural-language ask (a single short paragraph, n
         interactiveBlacklist: [
           function () { return document.getElementById('llm-config-panel'); },
           function () { return document.getElementById('chat-panel'); },
+          // The piano keyboard is a live-performance surface for the human;
+          // composing goes through the sequencer. Keep its ~37 key buttons
+          // out of the agent's element index.
+          function () { return document.getElementById('keyboard-panel'); },
         ],
       };
 

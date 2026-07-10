@@ -138,7 +138,7 @@
   var percTom, percMetal, percRim, samplePlayers;
   var filter, dist, delay, pingpong, reverb;
   var bassSaw, bassAcid, chorus, pumpGain, crusher, djHP, djLP;
-  var comp, eq3, masterVol, limiter;
+  var comp, eq3, masterVol, limiter, masterAnalyser;
   var channels = {};         // kick|bass|snare|hats|lead|pad|perc -> Tone.Channel
   var repeatId = null;
   var initialized = false;
@@ -956,7 +956,9 @@
     percRim.connect(channels.perc);
     channels.perc.connect(pumpGain);
 
-    pumpGain.chain(crusher, djHP, djLP, eq3, comp, masterVol, limiter, Tone.getDestination());
+    masterAnalyser = new Tone.Analyser('waveform', 1024);
+    pumpGain.chain(crusher, djHP, djLP, eq3, comp, masterVol, limiter, masterAnalyser);
+    masterAnalyser.toDestination();
 
     if (window.location.protocol !== 'file:') {
       try {
@@ -1055,28 +1057,7 @@
           var note = noteForRow(r);
           var lt = hTime(time);
           var lv = hVel(c.v);
-          if (leadStyle === 'pluck' && leadPlucks.length) {
-            var pl = leadPlucks[leadPluckIdx++ % leadPlucks.length];
-            pl.triggerAttackRelease(note, leadNoteLen, lt, lv);
-          } else if (leadStyle === 'bell') {
-            leadBell.triggerAttackRelease(note, leadNoteLen, lt, lv);
-          } else if (leadStyle === 'duo') {
-            leadDuo.triggerAttackRelease(note, leadNoteLen, lt, lv);
-          } else if (leadStyle === 'seaboard') {
-            leadSea.triggerAttackRelease(note, leadNoteLen, lt, lv);
-          } else if (leadStyle === 'keys') {
-            leadKeys.triggerAttackRelease(note, leadNoteLen, lt, lv);
-          } else if (leadStyle === 'piano') {
-            // A grand rings past the step — hold at least an 8th so it sings.
-            var plen = (leadNoteLen === '16n') ? '8n' : leadNoteLen;
-            if (pianoSampler && pianoSampler.loaded) {
-              pianoSampler.triggerAttackRelease(note, plen, lt, lv);
-            } else {
-              leadKeys.triggerAttackRelease(note, plen, lt, lv);
-            }
-          } else {
-            poly.triggerAttackRelease(note, leadNoteLen, lt, lv);
-          }
+          triggerLeadAt(note, leadNoteLen, lt, lv);
         }
       }
       c = sc[10][st];
@@ -1416,6 +1397,73 @@
         syncTheme();
       });
       syncTheme();
+    }
+  }
+
+  function triggerLeadAt(note, dur, time, vel) {
+    if (leadStyle === 'pluck' && leadPlucks.length) {
+      var pl = leadPlucks[leadPluckIdx++ % leadPlucks.length];
+      pl.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'bell') {
+      leadBell.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'duo') {
+      leadDuo.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'seaboard') {
+      leadSea.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'keys') {
+      leadKeys.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'piano') {
+      var plen = (dur === '16n') ? '8n' : dur;
+      if (pianoSampler && pianoSampler.loaded) {
+        pianoSampler.triggerAttackRelease(note, plen, time, vel);
+      } else {
+        leadKeys.triggerAttackRelease(note, plen, time, vel);
+      }
+    } else {
+      poly.triggerAttackRelease(note, dur, time, vel);
+    }
+  }
+
+  function attackLeadAt(note, time, vel) {
+    if (leadStyle === 'pluck' && leadPlucks.length) {
+      var pl = leadPlucks[leadPluckIdx++ % leadPlucks.length];
+      pl.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'bell') {
+      leadBell.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'duo') {
+      leadDuo.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'seaboard') {
+      leadSea.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'keys') {
+      leadKeys.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'piano') {
+      if (pianoSampler && pianoSampler.loaded) {
+        pianoSampler.triggerAttack(note, time, vel);
+      } else {
+        leadKeys.triggerAttack(note, time, vel);
+      }
+    } else {
+      poly.triggerAttack(note, time, vel);
+    }
+  }
+
+  function releaseLeadNote(note) {
+    if (!initialized) return;
+    if (leadStyle === 'pluck' && leadPlucks.length) {
+      for (var i = 0; i < leadPlucks.length; i++) leadPlucks[i].triggerRelease(note);
+    } else if (leadStyle === 'bell') {
+      leadBell.triggerRelease(note);
+    } else if (leadStyle === 'duo') {
+      leadDuo.triggerRelease(note);
+    } else if (leadStyle === 'seaboard') {
+      leadSea.triggerRelease(note);
+    } else if (leadStyle === 'keys') {
+      leadKeys.triggerRelease(note);
+    } else if (leadStyle === 'piano') {
+      if (pianoSampler && pianoSampler.loaded) pianoSampler.triggerRelease(note);
+      else leadKeys.triggerRelease(note);
+    } else {
+      poly.triggerRelease(note);
     }
   }
 
@@ -2557,6 +2605,36 @@
   };
 
   window.BYODJ_SYNTH = api;
+
+  window.BYODJSynth = {
+    playNote: function (note, dur, vel) {
+      if (!initialized) return Promise.resolve();
+      var duration = dur || leadNoteLen;
+      var velocity = (vel !== undefined && vel !== null) ? vel : 0.8;
+      return Tone.start().then(function () {
+        triggerLeadAt(note, duration, Tone.now(), velocity);
+      });
+    },
+    attackNote: function (note, vel) {
+      if (!initialized) return Promise.resolve();
+      var velocity = (vel !== undefined && vel !== null) ? vel : 0.8;
+      return Tone.start().then(function () {
+        attackLeadAt(note, Tone.now(), velocity);
+      });
+    },
+    releaseNote: function (note) {
+      releaseLeadNote(note);
+    },
+    getAnalyser: function () {
+      return masterAnalyser;
+    },
+    getLeadOctave: function () {
+      return leadOct;
+    },
+    getRootNote: function () {
+      return currentRoot;
+    }
+  };
 
   document.addEventListener('DOMContentLoaded', function () {
     api.init();

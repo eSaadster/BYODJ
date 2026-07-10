@@ -64,6 +64,9 @@ Built and working. See [PLAN.md](./PLAN.md) for full architecture.
 
 What's in the box:
 
+- **Hardware-rack UI** — the whole app reads as one late-70s rack instrument: charcoal enclosure, ivory control panels, burnt-orange accents, dark module title bars. Two themes (charcoal/ivory desk unit) via the header switch
+- **Trace monitor** — an oscilloscope strip fed by an analyser on the master bus, with live BPM and playback-mode readouts
+- **Piano keyboard** — a playable 2-octave keyboard wired to the lead voice; it follows the selected root note and lead octave. Play by mouse/touch or computer keys (A W S E D F T G Y H U J K = C to C), disabled while typing in any text field
 - **16-step × 10-row sequencer** — Kick, Bass, Snare, Closed/Open Hat, plus five melodic lead rows (root/third/fifth/seventh/octave) that follow the selected scale and root
 - **Transport** — Play, Stop, Clear, Random
 - **Synth controls** — tempo (60–200 BPM), lowpass filter cutoff + resonance, full ADSR envelope, reverb, delay, distortion, lead waveform (sine/square/sawtooth/triangle plus fat detuned fatsawtooth/fatsquare/fattriangle), scale (major/minor/dorian/phrygian/lydian/mixolydian/harmonicMinor/blues/pentatonic), root note

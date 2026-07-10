@@ -10,522 +10,628 @@
         localStorage.getItem('byodj.theme') === 'light' ? 'light' : 'dark');
     } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <section id="header">
-    <h1>BYODJ</h1>
-    <p class="tagline">Bring Your Own DJ — a PageAgent-powered synth that composes music from natural language.</p>
-    <button id="theme-toggle" aria-label="Color theme" data-state="dark" aria-pressed="false">Light</button>
-  </section>
+  <div class="instrument-enclosure">
 
-  <section id="sequencer-panel">
-    <h2>Sequencer</h2>
-    <div class="seq-toolbar">
-      <div class="tb-group">
-        <span class="tb-label">Scene</span>
-        <button id="scene-btn-a" class="scene-btn" type="button" aria-label="Scene A" data-state="on"  aria-pressed="true">A</button>
-        <button id="scene-btn-b" class="scene-btn" type="button" aria-label="Scene B" data-state="off" aria-pressed="false">B</button>
-        <button id="scene-btn-c" class="scene-btn" type="button" aria-label="Scene C" data-state="off" aria-pressed="false">C</button>
-        <button id="scene-btn-d" class="scene-btn" type="button" aria-label="Scene D" data-state="off" aria-pressed="false">D</button>
+    <header id="header" class="enclosure-header">
+      <div class="header-brand">
+        <h1>BYODJ</h1>
+        <span class="brand-sub">Bring Your Own DJ</span>
+        <p class="tagline">Bring Your Own DJ — a PageAgent-powered synth that composes music from natural language.</p>
       </div>
-      <div class="tb-group">
-        <label class="tb-label" for="copy-scene-to">Copy to</label>
-        <select id="copy-scene-to" class="tb-select" aria-label="Copy scene to" data-state="B">
-          <option value="A">A</option><option value="B" selected>B</option>
-          <option value="C">C</option><option value="D">D</option>
-        </select>
-        <button id="copy-scene-btn" class="scene-btn" type="button" aria-label="Copy scene">Copy</button>
+      <div class="header-status" id="status-leds" aria-label="System status">
+        <span class="status-led" data-led="audio"><span class="led-dot"></span>AUDIO</span>
+        <span class="status-led" data-led="agent"><span class="led-dot"></span>AGENT</span>
       </div>
-      <div class="tb-group">
-        <label class="tb-label" for="chain-input">Chain</label>
-        <input type="text" id="chain-input" aria-label="Scene chain" value="A" maxlength="8" autocomplete="off" spellcheck="false">
-        <button id="chain-apply-btn" class="scene-btn" type="button" aria-label="Apply chain">Apply</button>
+      <button id="theme-toggle" class="theme-switch" aria-label="Color theme" data-state="dark" aria-pressed="false">Light</button>
+    </header>
+
+    <section id="trace-monitor-panel" class="module module-monitor">
+      <div class="module-title-bar">
+        <h2 class="module-title">Trace Monitor</h2>
+        <span class="module-readout" id="monitor-mode-readout">loop</span>
       </div>
+      <div class="module-body monitor-body">
+        <div class="scope-wrap" role="img" aria-labelledby="trace-monitor-label">
+          <span class="scope-label scope-label-tl" id="trace-monitor-label">SCOPE</span>
+          <span class="scope-label scope-label-tr" id="trace-bpm-readout">120 BPM</span>
+          <span class="scope-label scope-label-br" id="trace-mode-readout">loop</span>
+          <canvas id="trace-monitor" width="800" height="72"></canvas>
+        </div>
+        <div id="trace-monitor-readout" class="visually-hidden" aria-live="off">Waveform idle. Master volume 0 dB.</div>
+      </div>
+    </section>
+
+    <section id="sequencer-panel" class="module module-sequencer">
+      <div class="module-title-bar">
+        <h2 class="module-title">Sequencer</h2>
+      </div>
+      <div class="module-body module-body-dark">
+        <div class="seq-toolbar">
+          <div class="tb-group">
+            <span class="tb-label">Scene</span>
+            <button id="scene-btn-a" class="scene-btn" type="button" aria-label="Scene A" data-state="on"  aria-pressed="true">A</button>
+            <button id="scene-btn-b" class="scene-btn" type="button" aria-label="Scene B" data-state="off" aria-pressed="false">B</button>
+            <button id="scene-btn-c" class="scene-btn" type="button" aria-label="Scene C" data-state="off" aria-pressed="false">C</button>
+            <button id="scene-btn-d" class="scene-btn" type="button" aria-label="Scene D" data-state="off" aria-pressed="false">D</button>
+          </div>
+          <div class="tb-group">
+            <label class="tb-label" for="copy-scene-to">Copy to</label>
+            <select id="copy-scene-to" class="tb-select" aria-label="Copy scene to" data-state="B">
+              <option value="A">A</option><option value="B" selected>B</option>
+              <option value="C">C</option><option value="D">D</option>
+            </select>
+            <button id="copy-scene-btn" class="scene-btn" type="button" aria-label="Copy scene">Copy</button>
+          </div>
+          <div class="tb-group">
+            <label class="tb-label" for="chain-input">Chain</label>
+            <input type="text" id="chain-input" aria-label="Scene chain" value="A" maxlength="8" autocomplete="off" spellcheck="false">
+            <button id="chain-apply-btn" class="scene-btn" type="button" aria-label="Apply chain">Apply</button>
+          </div>
+        </div>
+        <div class="seq-toolbar">
+          <div class="tb-group">
+            <label class="tb-label" for="playback-mode">Mode</label>
+            <select id="playback-mode" class="tb-select" aria-label="Playback mode" data-state="loop">
+              <option value="loop" selected>loop</option><option value="chain">chain</option><option value="song">song</option>
+            </select>
+          </div>
+          <div class="tb-group">
+            <label class="tb-label" for="pattern-length">Length</label>
+            <select id="pattern-length" class="tb-select" aria-label="Pattern length" data-state="16">
+              <option value="16" selected>16 steps (1 bar)</option>
+              <option value="32">32 steps (2 bars)</option>
+              <option value="64">64 steps (4 bars)</option>
+            </select>
+          </div>
+          <div class="tb-group" id="bar-pager">
+            <span class="tb-label">Bar</span>
+            <button id="bar-btn-1" class="bar-btn" type="button" aria-label="Edit bar 1" data-state="on"  aria-pressed="true"  data-bar="0">1</button>
+            <button id="bar-btn-2" class="bar-btn" type="button" aria-label="Edit bar 2" data-state="off" aria-pressed="false" data-bar="1" hidden disabled>2</button>
+            <button id="bar-btn-3" class="bar-btn" type="button" aria-label="Edit bar 3" data-state="off" aria-pressed="false" data-bar="2" hidden disabled>3</button>
+            <button id="bar-btn-4" class="bar-btn" type="button" aria-label="Edit bar 4" data-state="off" aria-pressed="false" data-bar="3" hidden disabled>4</button>
+          </div>
+        </div>
+        <div id="sequencer-grid"></div>
+        <div class="transport">
+          <button id="play-btn" aria-label="Play Sequence">&#9654; Play</button>
+          <button id="stop-btn" aria-label="Stop Sequence">&#9632; Stop</button>
+          <button id="clear-btn" aria-label="Clear Grid">Clear</button>
+          <button id="clear-all-btn" aria-label="Clear All">Clear All</button>
+          <button id="random-btn" aria-label="Randomize Grid">Random</button>
+          <button id="export-midi-btn" aria-label="Export MIDI">Export MIDI</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="module-row controls-row">
+      <section id="controls-panel" class="module">
+        <div class="module-title-bar">
+          <h2 class="module-title">Controls</h2>
+        </div>
+        <div class="module-body controls-grid-wrap">
+          <div class="control-group">
+            <h3 class="control-group-title">Oscillator</h3>
+            <div class="controls-grid">
+              <div class="control">
+                <label for="tempo-slider">Tempo (BPM)</label>
+                <div class="control-row">
+                  <input type="range" id="tempo-slider" aria-label="Tempo (BPM)" min="60" max="200" step="1" value="120">
+                  <output id="tempo-slider-value" class="val" for="tempo-slider">120</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="waveform-select">Lead Waveform</label>
+                <select id="waveform-select" aria-label="Lead Waveform">
+                  <option value="sine">sine</option>
+                  <option value="square">square</option>
+                  <option value="sawtooth" selected>sawtooth</option>
+                  <option value="triangle">triangle</option>
+                  <option value="fatsawtooth">fatsawtooth</option>
+                  <option value="fatsquare">fatsquare</option>
+                  <option value="fattriangle">fattriangle</option>
+                  <option value="pwm">pwm</option>
+                  <option value="pulse">pulse</option>
+                  <option value="fmsine">fmsine</option>
+                  <option value="fmsquare">fmsquare</option>
+                  <option value="amsine">amsine</option>
+                  <option value="amtriangle">amtriangle</option>
+                </select>
+              </div>
+              <div class="control">
+                <label for="scale-select">Scale</label>
+                <select id="scale-select" aria-label="Scale">
+                  <option value="major">major</option>
+                  <option value="minor" selected>minor</option>
+                  <option value="dorian">dorian</option>
+                  <option value="phrygian">phrygian</option>
+                  <option value="pentatonic">pentatonic</option>
+                  <option value="lydian">lydian</option>
+                  <option value="mixolydian">mixolydian</option>
+                  <option value="harmonicMinor">harmonicMinor</option>
+                  <option value="blues">blues</option>
+                </select>
+              </div>
+              <div class="control">
+                <label for="root-select">Root Note</label>
+                <select id="root-select" aria-label="Root Note">
+                  <option value="C" selected>C</option>
+                  <option value="C#">C#</option>
+                  <option value="D">D</option>
+                  <option value="D#">D#</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="F#">F#</option>
+                  <option value="G">G</option>
+                  <option value="G#">G#</option>
+                  <option value="A">A</option>
+                  <option value="A#">A#</option>
+                  <option value="B">B</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="control-group">
+            <h3 class="control-group-title">Filter</h3>
+            <div class="controls-grid">
+              <div class="control">
+                <label for="filter-cutoff">Filter Cutoff (Hz)</label>
+                <div class="control-row">
+                  <input type="range" id="filter-cutoff" aria-label="Filter Cutoff (Hz)" min="100" max="10000" step="50" value="2000">
+                  <output id="filter-cutoff-value" class="val" for="filter-cutoff">2000</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="filter-resonance">Filter Resonance (Q)</label>
+                <div class="control-row">
+                  <input type="range" id="filter-resonance" aria-label="Filter Resonance (Q)" min="0" max="20" step="0.5" value="1">
+                  <output id="filter-resonance-value" class="val" for="filter-resonance">1</output>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="control-group">
+            <h3 class="control-group-title">Envelope</h3>
+            <div class="controls-grid">
+              <div class="control">
+                <label for="env-attack">Envelope Attack (seconds)</label>
+                <div class="control-row">
+                  <input type="range" id="env-attack" aria-label="Env Attack (sec)" min="0.001" max="2" step="0.001" value="0.01">
+                  <output id="env-attack-value" class="val" for="env-attack">0.01</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="env-decay">Envelope Decay (seconds)</label>
+                <div class="control-row">
+                  <input type="range" id="env-decay" aria-label="Env Decay (sec)" min="0.01" max="2" step="0.01" value="0.2">
+                  <output id="env-decay-value" class="val" for="env-decay">0.2</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="env-sustain">Envelope Sustain (0 to 1)</label>
+                <div class="control-row">
+                  <input type="range" id="env-sustain" aria-label="Env Sustain (0-1)" min="0" max="1" step="0.01" value="0.5">
+                  <output id="env-sustain-value" class="val" for="env-sustain">0.5</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="env-release">Envelope Release (seconds)</label>
+                <div class="control-row">
+                  <input type="range" id="env-release" aria-label="Env Release (sec)" min="0.01" max="4" step="0.01" value="0.8">
+                  <output id="env-release-value" class="val" for="env-release">0.8</output>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="control-group">
+            <h3 class="control-group-title">FX</h3>
+            <div class="controls-grid">
+              <div class="control">
+                <label for="reverb-wet">Reverb Amount (0 to 1)</label>
+                <div class="control-row">
+                  <input type="range" id="reverb-wet" aria-label="Reverb (0 to 1)" min="0" max="1" step="0.01" value="0.2">
+                  <output id="reverb-wet-value" class="val" for="reverb-wet">0.2</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="delay-wet">Delay Amount (0 to 1)</label>
+                <div class="control-row">
+                  <input type="range" id="delay-wet" aria-label="Delay (0 to 1)" min="0" max="1" step="0.01" value="0.15">
+                  <output id="delay-wet-value" class="val" for="delay-wet">0.15</output>
+                </div>
+              </div>
+              <div class="control">
+                <label for="delay-style">Delay Style</label>
+                <select id="delay-style" aria-label="Delay Style" data-state="feedback">
+                  <option value="feedback" selected>feedback</option>
+                  <option value="pingpong">pingpong</option>
+                </select>
+              </div>
+              <div class="control">
+                <label for="distortion-amount">Distortion Amount (0 to 1)</label>
+                <div class="control-row">
+                  <input type="range" id="distortion-amount" aria-label="Distortion (0-1)" min="0" max="1" step="0.01" value="0">
+                  <output id="distortion-amount-value" class="val" for="distortion-amount">0</output>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sound-panel" class="module">
+        <div class="module-title-bar">
+          <h2 class="module-title">Sound Design</h2>
+        </div>
+        <div class="module-body">
+          <div class="controls-grid">
+            <div class="control">
+              <label for="drum-kit">Drum Kit</label>
+              <select id="drum-kit" aria-label="Drum Kit">
+                <option value="analog" selected>analog</option>
+                <option value="808">808</option>
+                <option value="909">909</option>
+                <option value="lofi">lofi</option>
+                <option value="sampled">sampled</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="bass-style">Bass Style</label>
+              <select id="bass-style" aria-label="Bass Style">
+                <option value="sub" selected>sub</option>
+                <option value="saw">saw</option>
+                <option value="acid">acid</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="lead-style">Lead Style</label>
+              <select id="lead-style" aria-label="Lead Style" data-state="saw">
+                <option value="saw" selected>saw</option>
+                <option value="pluck">pluck</option>
+                <option value="bell">bell</option>
+                <option value="duo">duo</option>
+                <option value="seaboard">seaboard</option>
+                <option value="keys">keys</option>
+                <option value="piano">piano</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="perc-voice">Perc Voice</label>
+              <select id="perc-voice" aria-label="Perc Voice" data-state="tom">
+                <option value="tom" selected>tom</option>
+                <option value="metal">metal</option>
+                <option value="rim">rim</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="pad-toggle">Pad Layer</label>
+              <button id="pad-toggle" class="toggle-btn" type="button" aria-label="Pad Layer" data-state="off" aria-pressed="false">Pad</button>
+            </div>
+            <div class="control">
+              <label for="pad-voice">Pad Voice</label>
+              <select id="pad-voice" aria-label="Pad Voice" data-state="warm">
+                <option value="warm" selected>warm</option>
+                <option value="glass">glass</option>
+                <option value="strings">strings</option>
+                <option value="dark">dark</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="lead-octave">Lead Octave</label>
+              <select id="lead-octave" aria-label="Lead Octave">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="lead-notelen">Lead Note Length</label>
+              <select id="lead-notelen" aria-label="Lead Note Length">
+                <option value="16n" selected>16n</option>
+                <option value="8n">8n</option>
+                <option value="4n">4n</option>
+                <option value="2n">2n</option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="glide-amount">Glide (seconds)</label>
+              <div class="control-row">
+                <input type="range" id="glide-amount" aria-label="Glide (seconds)" min="0" max="0.3" step="0.005" value="0">
+                <output id="glide-amount-value" class="val" for="glide-amount">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="chorus-wet">Chorus (0 to 1)</label>
+              <div class="control-row">
+                <input type="range" id="chorus-wet" aria-label="Chorus (0 to 1)" min="0" max="1" step="0.01" value="0">
+                <output id="chorus-wet-value" class="val" for="chorus-wet">0</output>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="master-panel" class="module module-master">
+        <div class="module-title-bar">
+          <h2 class="module-title">Master &amp; Groove</h2>
+        </div>
+        <div class="module-body">
+          <div class="controls-grid">
+            <div class="control">
+              <label for="master-volume">Master Vol (dB)</label>
+              <div class="control-row">
+                <input type="range" id="master-volume" aria-label="Master Vol (dB)" min="-36" max="6" step="1" value="0">
+                <output id="master-volume-value" class="val" for="master-volume">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="dj-filter">DJ Filter</label>
+              <div class="control-row">
+                <input type="range" id="dj-filter" aria-label="DJ Filter" min="-100" max="100" step="1" value="0">
+                <output id="dj-filter-value" class="val" for="dj-filter">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="pump-amount">Pump (0 to 1)</label>
+              <div class="control-row">
+                <input type="range" id="pump-amount" aria-label="Pump (0 to 1)" min="0" max="1" step="0.01" value="0">
+                <output id="pump-amount-value" class="val" for="pump-amount">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="crush-amount">Bitcrush (0 to 1)</label>
+              <div class="control-row">
+                <input type="range" id="crush-amount" aria-label="Bitcrush (0 to 1)" min="0" max="1" step="0.01" value="0">
+                <output id="crush-amount-value" class="val" for="crush-amount">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="swing-amount">Swing (0 to 0.5)</label>
+              <div class="control-row">
+                <input type="range" id="swing-amount" aria-label="Swing (0 to 0.5)" min="0" max="0.5" step="0.01" value="0">
+                <output id="swing-amount-value" class="val" for="swing-amount">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="humanize-amount">Humanize (0 to 1)</label>
+              <div class="control-row">
+                <input type="range" id="humanize-amount" aria-label="Humanize (0 to 1)" min="0" max="1" step="0.01" value="0">
+                <output id="humanize-amount-value" class="val" for="humanize-amount">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="eq-low">EQ Low (dB)</label>
+              <div class="control-row">
+                <input type="range" id="eq-low" aria-label="EQ Low (dB)" min="-12" max="12" step="0.5" value="0">
+                <output id="eq-low-value" class="val" for="eq-low">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="eq-mid">EQ Mid (dB)</label>
+              <div class="control-row">
+                <input type="range" id="eq-mid" aria-label="EQ Mid (dB)" min="-12" max="12" step="0.5" value="0">
+                <output id="eq-mid-value" class="val" for="eq-mid">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="eq-high">EQ High (dB)</label>
+              <div class="control-row">
+                <input type="range" id="eq-high" aria-label="EQ High (dB)" min="-12" max="12" step="0.5" value="0">
+                <output id="eq-high-value" class="val" for="eq-high">0</output>
+              </div>
+            </div>
+            <div class="control">
+              <label for="fills-toggle">Auto Fills (every 4th bar)</label>
+              <button id="fills-toggle" class="toggle-btn" type="button" aria-label="Auto fills" data-state="off" aria-pressed="false">Fills</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
-    <div class="seq-toolbar">
-      <div class="tb-group">
-        <label class="tb-label" for="playback-mode">Mode</label>
-        <select id="playback-mode" class="tb-select" aria-label="Playback mode" data-state="loop">
-          <option value="loop" selected>loop</option><option value="chain">chain</option><option value="song">song</option>
-        </select>
+
+    <section id="mixer-panel" class="module">
+      <div class="module-title-bar">
+        <h2 class="module-title">Mixer</h2>
       </div>
-      <div class="tb-group">
-        <label class="tb-label" for="pattern-length">Length</label>
-        <select id="pattern-length" class="tb-select" aria-label="Pattern length" data-state="16">
-          <option value="16" selected>16 steps (1 bar)</option>
-          <option value="32">32 steps (2 bars)</option>
-          <option value="64">64 steps (4 bars)</option>
-        </select>
+      <div class="module-body">
+        <div class="mixer-grid">
+          <div class="mixer-strip">
+            <label for="level-kick">Kick Vol (dB)</label>
+            <input type="range" id="level-kick" aria-label="Kick Vol (dB)" min="-24" max="6" step="1" value="0">
+            <output id="level-kick-value" class="val" for="level-kick">0</output>
+            <div class="strip-btns">
+              <button id="mute-kick" class="mute-btn" aria-label="Mute Kick" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-kick" class="mute-btn solo-btn" aria-label="Solo Kick" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-kick">Kick Pan</label>
+            <input type="range" id="pan-kick" aria-label="Kick Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-kick-value" class="val" for="pan-kick">0</output>
+          </div>
+          <div class="mixer-strip">
+            <label for="level-bass">Bass Vol (dB)</label>
+            <input type="range" id="level-bass" aria-label="Bass Vol (dB)" min="-24" max="6" step="1" value="0">
+            <output id="level-bass-value" class="val" for="level-bass">0</output>
+            <div class="strip-btns">
+              <button id="mute-bass" class="mute-btn" aria-label="Mute Bass" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-bass" class="mute-btn solo-btn" aria-label="Solo Bass" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-bass">Bass Pan</label>
+            <input type="range" id="pan-bass" aria-label="Bass Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-bass-value" class="val" for="pan-bass">0</output>
+          </div>
+          <div class="mixer-strip">
+            <label for="level-snare">Snare Vol (dB)</label>
+            <input type="range" id="level-snare" aria-label="Snare Vol (dB)" min="-24" max="6" step="1" value="0">
+            <output id="level-snare-value" class="val" for="level-snare">0</output>
+            <div class="strip-btns">
+              <button id="mute-snare" class="mute-btn" aria-label="Mute Snare" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-snare" class="mute-btn solo-btn" aria-label="Solo Snare" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-snare">Snare Pan</label>
+            <input type="range" id="pan-snare" aria-label="Snare Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-snare-value" class="val" for="pan-snare">0</output>
+          </div>
+          <div class="mixer-strip">
+            <label for="level-hats">Hats Vol (dB)</label>
+            <input type="range" id="level-hats" aria-label="Hats Vol (dB)" min="-24" max="6" step="1" value="0">
+            <output id="level-hats-value" class="val" for="level-hats">0</output>
+            <div class="strip-btns">
+              <button id="mute-hats" class="mute-btn" aria-label="Mute Hats" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-hats" class="mute-btn solo-btn" aria-label="Solo Hats" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-hats">Hats Pan</label>
+            <input type="range" id="pan-hats" aria-label="Hats Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-hats-value" class="val" for="pan-hats">0</output>
+          </div>
+          <div class="mixer-strip">
+            <label for="level-lead">Lead Vol (dB)</label>
+            <input type="range" id="level-lead" aria-label="Lead Vol (dB)" min="-24" max="6" step="1" value="0">
+            <output id="level-lead-value" class="val" for="level-lead">0</output>
+            <div class="strip-btns">
+              <button id="mute-lead" class="mute-btn" aria-label="Mute Lead" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-lead" class="mute-btn solo-btn" aria-label="Solo Lead" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-lead">Lead Pan</label>
+            <input type="range" id="pan-lead" aria-label="Lead Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-lead-value" class="val" for="pan-lead">0</output>
+          </div>
+          <div class="mixer-strip">
+            <label for="level-pad">Pad Vol (dB)</label>
+            <input type="range" id="level-pad" aria-label="Pad Vol (dB)" min="-24" max="6" step="1" value="-6">
+            <output id="level-pad-value" class="val" for="level-pad">-6</output>
+            <div class="strip-btns">
+              <button id="mute-pad" class="mute-btn" aria-label="Mute Pad" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-pad" class="mute-btn solo-btn" aria-label="Solo Pad" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-pad">Pad Pan</label>
+            <input type="range" id="pan-pad" aria-label="Pad Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-pad-value" class="val" for="pan-pad">0</output>
+          </div>
+          <div class="mixer-strip">
+            <label for="level-perc">Perc Vol (dB)</label>
+            <input type="range" id="level-perc" aria-label="Perc Vol (dB)" min="-24" max="6" step="1" value="0">
+            <output id="level-perc-value" class="val" for="level-perc">0</output>
+            <div class="strip-btns">
+              <button id="mute-perc" class="mute-btn" aria-label="Mute Perc" data-state="off" aria-pressed="false">Mute</button>
+              <button id="solo-perc" class="mute-btn solo-btn" aria-label="Solo Perc" data-state="off" aria-pressed="false">Solo</button>
+            </div>
+            <label for="pan-perc">Perc Pan</label>
+            <input type="range" id="pan-perc" aria-label="Perc Pan" min="-1" max="1" step="0.05" value="0">
+            <output id="pan-perc-value" class="val" for="pan-perc">0</output>
+          </div>
+        </div>
       </div>
-      <div class="tb-group" id="bar-pager">
-        <span class="tb-label">Bar</span>
-        <button id="bar-btn-1" class="bar-btn" type="button" aria-label="Edit bar 1" data-state="on"  aria-pressed="true"  data-bar="0">1</button>
-        <button id="bar-btn-2" class="bar-btn" type="button" aria-label="Edit bar 2" data-state="off" aria-pressed="false" data-bar="1" hidden disabled>2</button>
-        <button id="bar-btn-3" class="bar-btn" type="button" aria-label="Edit bar 3" data-state="off" aria-pressed="false" data-bar="2" hidden disabled>3</button>
-        <button id="bar-btn-4" class="bar-btn" type="button" aria-label="Edit bar 4" data-state="off" aria-pressed="false" data-bar="3" hidden disabled>4</button>
+    </section>
+
+    <section id="keyboard-panel" class="module">
+      <div class="module-title-bar">
+        <h2 class="module-title">Keyboard</h2>
       </div>
+      <div class="module-body keyboard-body">
+        <div id="keyboard" class="piano-keyboard" role="group" aria-label="Piano keyboard"></div>
+      </div>
+    </section>
+
+    <div class="module-row bottom-row">
+      <section id="song-panel" class="module">
+        <div class="module-title-bar">
+          <h2 class="module-title">Song</h2>
+        </div>
+        <div class="module-body">
+          <div class="song-row">
+            <textarea id="song-input" rows="5" aria-label="Song JSON" spellcheck="false"
+              placeholder='[{"name":"intro","scene":"A","bars":8},{"name":"drop","scene":"B","bars":16,"root":"F","ramps":{"filterCutoff":{"to":9000,"bars":4}}}]'></textarea>
+            <button id="song-apply-btn" type="button" aria-label="Apply song">Apply</button>
+          </div>
+          <div class="song-readout">
+            <span class="tb-label">Now</span>
+            <button id="song-status" class="status-btn" type="button" aria-label="Song status" data-state="idle">&mdash;</button>
+          </div>
+          <p class="hint">Sections: { name, scene, bars, root?, scale?, overrides?, ramps? }. Set Mode to "song" and press Play. The composer tool is the primary editor; this textarea is the manual escape hatch.</p>
+        </div>
+      </section>
+
+      <section id="llm-config-panel" class="module">
+        <div class="module-title-bar">
+          <h2 class="module-title">LLM Config</h2>
+        </div>
+        <div class="module-body">
+          <div class="llm-grid">
+            <div class="control">
+              <label for="llm-base-url">Base URL</label>
+              <input type="text" id="llm-base-url" aria-label="LLM Base URL" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="control">
+              <label for="llm-api-key">API Key</label>
+              <input type="password" id="llm-api-key" aria-label="LLM API Key">
+            </div>
+            <div class="control">
+              <label for="llm-model">Model ID</label>
+              <input type="text" id="llm-model" aria-label="LLM Model ID" placeholder="gpt-4o-mini">
+            </div>
+            <div class="control">
+              <label for="mode-select">DJ Mode</label>
+              <select id="mode-select" aria-label="DJ Mode">
+                <option value="composer" selected>Composer (one-shot, fast)</option>
+                <option value="theater">Theater (watch it click)</option>
+              </select>
+            </div>
+            <div class="control control-btn">
+              <button id="connect-btn" aria-label="Connect LLM">Connect</button>
+            </div>
+          </div>
+          <p class="hint">Endpoint must allow browser CORS. Your API key is saved in this browser's localStorage so it survives reloads &mdash; do not use on shared machines. <strong>Composer</strong> mode applies the whole composition in one tool call (fast, no overlay); <strong>Theater</strong> mode shows the agent clicking every control, with its floating panel and page mask visible.</p>
+        </div>
+      </section>
+
+      <section id="chat-panel" class="module module-chat">
+        <div class="module-title-bar">
+          <h2 class="module-title">Talk to the DJ</h2>
+        </div>
+        <div class="module-body">
+          <div class="chat-row">
+            <textarea id="instruction-input" rows="2" aria-label="Instruction for the DJ agent" placeholder="Tell the DJ what to play&#8230;"></textarea>
+            <button id="improve-btn" type="button" aria-label="Improve Prompt">Improve</button>
+            <button id="send-btn" aria-label="Send Instruction" disabled>Send</button>
+          </div>
+          <p class="hint">Rough idea? Type a genre or vibe (e.g. "djent") and hit <strong>Improve</strong> &mdash; it rewrites your ask into a detailed brief that uses the full machine (arrangement, dynamics, sweeps). Review, tweak, then Send.</p>
+        </div>
+      </section>
     </div>
-    <div id="sequencer-grid"></div>
-    <div class="transport">
-      <button id="play-btn" aria-label="Play Sequence">&#9654; Play</button>
-      <button id="stop-btn" aria-label="Stop Sequence">&#9632; Stop</button>
-      <button id="clear-btn" aria-label="Clear Grid">Clear</button>
-      <button id="clear-all-btn" aria-label="Clear All">Clear All</button>
-      <button id="random-btn" aria-label="Randomize Grid">Random</button>
-      <button id="export-midi-btn" aria-label="Export MIDI">Export MIDI</button>
-    </div>
-  </section>
 
-  <section id="mixer-panel">
-    <h2>Mixer</h2>
-    <div class="mixer-grid">
-
-      <div class="mixer-strip">
-        <label for="level-kick">Kick Vol (dB)</label>
-        <input type="range" id="level-kick" aria-label="Kick Vol (dB)" min="-24" max="6" step="1" value="0">
-        <output id="level-kick-value" class="val" for="level-kick">0</output>
-        <button id="mute-kick" class="mute-btn" aria-label="Mute Kick" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-kick" class="mute-btn solo-btn" aria-label="Solo Kick" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-kick">Kick Pan</label>
-        <input type="range" id="pan-kick" aria-label="Kick Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-kick-value" class="val" for="pan-kick">0</output>
+    <section id="status-panel" class="module module-dark">
+      <div class="module-title-bar">
+        <h2 class="module-title">Agent Status</h2>
       </div>
-
-      <div class="mixer-strip">
-        <label for="level-bass">Bass Vol (dB)</label>
-        <input type="range" id="level-bass" aria-label="Bass Vol (dB)" min="-24" max="6" step="1" value="0">
-        <output id="level-bass-value" class="val" for="level-bass">0</output>
-        <button id="mute-bass" class="mute-btn" aria-label="Mute Bass" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-bass" class="mute-btn solo-btn" aria-label="Solo Bass" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-bass">Bass Pan</label>
-        <input type="range" id="pan-bass" aria-label="Bass Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-bass-value" class="val" for="pan-bass">0</output>
+      <div class="module-body">
+        <div class="status-cards">
+          <div class="status-card">
+            <h3>Previous</h3>
+            <div id="status-eval">&mdash;</div>
+          </div>
+          <div class="status-card">
+            <h3>Memory</h3>
+            <div id="status-memory">&mdash;</div>
+          </div>
+          <div class="status-card">
+            <h3>Next goal</h3>
+            <div id="status-goal">&mdash;</div>
+          </div>
+        </div>
+        <div id="agent-log"></div>
       </div>
+    </section>
 
-      <div class="mixer-strip">
-        <label for="level-snare">Snare Vol (dB)</label>
-        <input type="range" id="level-snare" aria-label="Snare Vol (dB)" min="-24" max="6" step="1" value="0">
-        <output id="level-snare-value" class="val" for="level-snare">0</output>
-        <button id="mute-snare" class="mute-btn" aria-label="Mute Snare" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-snare" class="mute-btn solo-btn" aria-label="Solo Snare" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-snare">Snare Pan</label>
-        <input type="range" id="pan-snare" aria-label="Snare Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-snare-value" class="val" for="pan-snare">0</output>
-      </div>
-
-      <div class="mixer-strip">
-        <label for="level-hats">Hats Vol (dB)</label>
-        <input type="range" id="level-hats" aria-label="Hats Vol (dB)" min="-24" max="6" step="1" value="0">
-        <output id="level-hats-value" class="val" for="level-hats">0</output>
-        <button id="mute-hats" class="mute-btn" aria-label="Mute Hats" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-hats" class="mute-btn solo-btn" aria-label="Solo Hats" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-hats">Hats Pan</label>
-        <input type="range" id="pan-hats" aria-label="Hats Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-hats-value" class="val" for="pan-hats">0</output>
-      </div>
-
-      <div class="mixer-strip">
-        <label for="level-lead">Lead Vol (dB)</label>
-        <input type="range" id="level-lead" aria-label="Lead Vol (dB)" min="-24" max="6" step="1" value="0">
-        <output id="level-lead-value" class="val" for="level-lead">0</output>
-        <button id="mute-lead" class="mute-btn" aria-label="Mute Lead" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-lead" class="mute-btn solo-btn" aria-label="Solo Lead" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-lead">Lead Pan</label>
-        <input type="range" id="pan-lead" aria-label="Lead Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-lead-value" class="val" for="pan-lead">0</output>
-      </div>
-
-      <div class="mixer-strip">
-        <label for="level-pad">Pad Vol (dB)</label>
-        <input type="range" id="level-pad" aria-label="Pad Vol (dB)" min="-24" max="6" step="1" value="-6">
-        <output id="level-pad-value" class="val" for="level-pad">-6</output>
-        <button id="mute-pad" class="mute-btn" aria-label="Mute Pad" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-pad" class="mute-btn solo-btn" aria-label="Solo Pad" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-pad">Pad Pan</label>
-        <input type="range" id="pan-pad" aria-label="Pad Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-pad-value" class="val" for="pan-pad">0</output>
-      </div>
-
-      <div class="mixer-strip">
-        <label for="level-perc">Perc Vol (dB)</label>
-        <input type="range" id="level-perc" aria-label="Perc Vol (dB)" min="-24" max="6" step="1" value="0">
-        <output id="level-perc-value" class="val" for="level-perc">0</output>
-        <button id="mute-perc" class="mute-btn" aria-label="Mute Perc" data-state="off" aria-pressed="false">Mute</button>
-        <button id="solo-perc" class="mute-btn solo-btn" aria-label="Solo Perc" data-state="off" aria-pressed="false">Solo</button>
-        <label for="pan-perc">Perc Pan</label>
-        <input type="range" id="pan-perc" aria-label="Perc Pan" min="-1" max="1" step="0.05" value="0">
-        <output id="pan-perc-value" class="val" for="pan-perc">0</output>
-      </div>
-
-    </div>
-  </section>
-
-  <section id="master-panel">
-    <h2>Master &amp; Groove</h2>
-    <div class="controls-grid">
-
-      <div class="control">
-        <label for="master-volume">Master Vol (dB)</label>
-        <input type="range" id="master-volume" aria-label="Master Vol (dB)" min="-36" max="6" step="1" value="0">
-        <output id="master-volume-value" class="val" for="master-volume">0</output>
-      </div>
-
-      <div class="control">
-        <label for="dj-filter">DJ Filter</label>
-        <input type="range" id="dj-filter" aria-label="DJ Filter" min="-100" max="100" step="1" value="0">
-        <output id="dj-filter-value" class="val" for="dj-filter">0</output>
-      </div>
-
-      <div class="control">
-        <label for="pump-amount">Pump (0 to 1)</label>
-        <input type="range" id="pump-amount" aria-label="Pump (0 to 1)" min="0" max="1" step="0.01" value="0">
-        <output id="pump-amount-value" class="val" for="pump-amount">0</output>
-      </div>
-
-      <div class="control">
-        <label for="crush-amount">Bitcrush (0 to 1)</label>
-        <input type="range" id="crush-amount" aria-label="Bitcrush (0 to 1)" min="0" max="1" step="0.01" value="0">
-        <output id="crush-amount-value" class="val" for="crush-amount">0</output>
-      </div>
-
-      <div class="control">
-        <label for="swing-amount">Swing (0 to 0.5)</label>
-        <input type="range" id="swing-amount" aria-label="Swing (0 to 0.5)" min="0" max="0.5" step="0.01" value="0">
-        <output id="swing-amount-value" class="val" for="swing-amount">0</output>
-      </div>
-
-      <div class="control">
-        <label for="humanize-amount">Humanize (0 to 1)</label>
-        <input type="range" id="humanize-amount" aria-label="Humanize (0 to 1)" min="0" max="1" step="0.01" value="0">
-        <output id="humanize-amount-value" class="val" for="humanize-amount">0</output>
-      </div>
-
-      <div class="control">
-        <label for="eq-low">EQ Low (dB)</label>
-        <input type="range" id="eq-low" aria-label="EQ Low (dB)" min="-12" max="12" step="0.5" value="0">
-        <output id="eq-low-value" class="val" for="eq-low">0</output>
-      </div>
-
-      <div class="control">
-        <label for="eq-mid">EQ Mid (dB)</label>
-        <input type="range" id="eq-mid" aria-label="EQ Mid (dB)" min="-12" max="12" step="0.5" value="0">
-        <output id="eq-mid-value" class="val" for="eq-mid">0</output>
-      </div>
-
-      <div class="control">
-        <label for="eq-high">EQ High (dB)</label>
-        <input type="range" id="eq-high" aria-label="EQ High (dB)" min="-12" max="12" step="0.5" value="0">
-        <output id="eq-high-value" class="val" for="eq-high">0</output>
-      </div>
-
-      <div class="control">
-        <label for="fills-toggle">Auto Fills (every 4th bar)</label>
-        <button id="fills-toggle" class="toggle-btn" type="button" aria-label="Auto fills" data-state="off" aria-pressed="false">Fills</button>
-      </div>
-
-    </div>
-  </section>
-
-  <section id="controls-panel">
-    <h2>Controls</h2>
-    <div class="controls-grid">
-
-      <div class="control">
-        <label for="tempo-slider">Tempo (BPM)</label>
-        <input type="range" id="tempo-slider" aria-label="Tempo (BPM)" min="60" max="200" step="1" value="120">
-        <output id="tempo-slider-value" class="val" for="tempo-slider">120</output>
-      </div>
-
-      <div class="control">
-        <label for="filter-cutoff">Filter Cutoff (Hz)</label>
-        <input type="range" id="filter-cutoff" aria-label="Filter Cutoff (Hz)" min="100" max="10000" step="50" value="2000">
-        <output id="filter-cutoff-value" class="val" for="filter-cutoff">2000</output>
-      </div>
-
-      <div class="control">
-        <label for="filter-resonance">Filter Resonance (Q)</label>
-        <input type="range" id="filter-resonance" aria-label="Filter Resonance (Q)" min="0" max="20" step="0.5" value="1">
-        <output id="filter-resonance-value" class="val" for="filter-resonance">1</output>
-      </div>
-
-      <div class="control">
-        <label for="env-attack">Envelope Attack (seconds)</label>
-        <input type="range" id="env-attack" aria-label="Env Attack (sec)" min="0.001" max="2" step="0.001" value="0.01">
-        <output id="env-attack-value" class="val" for="env-attack">0.01</output>
-      </div>
-
-      <div class="control">
-        <label for="env-decay">Envelope Decay (seconds)</label>
-        <input type="range" id="env-decay" aria-label="Env Decay (sec)" min="0.01" max="2" step="0.01" value="0.2">
-        <output id="env-decay-value" class="val" for="env-decay">0.2</output>
-      </div>
-
-      <div class="control">
-        <label for="env-sustain">Envelope Sustain (0 to 1)</label>
-        <input type="range" id="env-sustain" aria-label="Env Sustain (0-1)" min="0" max="1" step="0.01" value="0.5">
-        <output id="env-sustain-value" class="val" for="env-sustain">0.5</output>
-      </div>
-
-      <div class="control">
-        <label for="env-release">Envelope Release (seconds)</label>
-        <input type="range" id="env-release" aria-label="Env Release (sec)" min="0.01" max="4" step="0.01" value="0.8">
-        <output id="env-release-value" class="val" for="env-release">0.8</output>
-      </div>
-
-      <div class="control">
-        <label for="reverb-wet">Reverb Amount (0 to 1)</label>
-        <input type="range" id="reverb-wet" aria-label="Reverb (0 to 1)" min="0" max="1" step="0.01" value="0.2">
-        <output id="reverb-wet-value" class="val" for="reverb-wet">0.2</output>
-      </div>
-
-      <div class="control">
-        <label for="delay-wet">Delay Amount (0 to 1)</label>
-        <input type="range" id="delay-wet" aria-label="Delay (0 to 1)" min="0" max="1" step="0.01" value="0.15">
-        <output id="delay-wet-value" class="val" for="delay-wet">0.15</output>
-      </div>
-
-      <div class="control">
-        <label for="delay-style">Delay Style</label>
-        <select id="delay-style" aria-label="Delay Style" data-state="feedback">
-          <option value="feedback" selected>feedback</option>
-          <option value="pingpong">pingpong</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="distortion-amount">Distortion Amount (0 to 1)</label>
-        <input type="range" id="distortion-amount" aria-label="Distortion (0-1)" min="0" max="1" step="0.01" value="0">
-        <output id="distortion-amount-value" class="val" for="distortion-amount">0</output>
-      </div>
-
-      <div class="control">
-        <label for="waveform-select">Lead Waveform</label>
-        <select id="waveform-select" aria-label="Lead Waveform">
-          <option value="sine">sine</option>
-          <option value="square">square</option>
-          <option value="sawtooth" selected>sawtooth</option>
-          <option value="triangle">triangle</option>
-          <option value="fatsawtooth">fatsawtooth</option>
-          <option value="fatsquare">fatsquare</option>
-          <option value="fattriangle">fattriangle</option>
-          <option value="pwm">pwm</option>
-          <option value="pulse">pulse</option>
-          <option value="fmsine">fmsine</option>
-          <option value="fmsquare">fmsquare</option>
-          <option value="amsine">amsine</option>
-          <option value="amtriangle">amtriangle</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="scale-select">Scale</label>
-        <select id="scale-select" aria-label="Scale">
-          <option value="major">major</option>
-          <option value="minor" selected>minor</option>
-          <option value="dorian">dorian</option>
-          <option value="phrygian">phrygian</option>
-          <option value="pentatonic">pentatonic</option>
-          <option value="lydian">lydian</option>
-          <option value="mixolydian">mixolydian</option>
-          <option value="harmonicMinor">harmonicMinor</option>
-          <option value="blues">blues</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="root-select">Root Note</label>
-        <select id="root-select" aria-label="Root Note">
-          <option value="C" selected>C</option>
-          <option value="C#">C#</option>
-          <option value="D">D</option>
-          <option value="D#">D#</option>
-          <option value="E">E</option>
-          <option value="F">F</option>
-          <option value="F#">F#</option>
-          <option value="G">G</option>
-          <option value="G#">G#</option>
-          <option value="A">A</option>
-          <option value="A#">A#</option>
-          <option value="B">B</option>
-        </select>
-      </div>
-
-    </div>
-  </section>
-
-  <section id="sound-panel">
-    <h2>Sound Design</h2>
-    <div class="controls-grid">
-
-      <div class="control">
-        <label for="drum-kit">Drum Kit</label>
-        <select id="drum-kit" aria-label="Drum Kit">
-          <option value="analog" selected>analog</option>
-          <option value="808">808</option>
-          <option value="909">909</option>
-          <option value="lofi">lofi</option>
-          <option value="sampled">sampled</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="bass-style">Bass Style</label>
-        <select id="bass-style" aria-label="Bass Style">
-          <option value="sub" selected>sub</option>
-          <option value="saw">saw</option>
-          <option value="acid">acid</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="lead-style">Lead Style</label>
-        <select id="lead-style" aria-label="Lead Style" data-state="saw">
-          <option value="saw" selected>saw</option>
-          <option value="pluck">pluck</option>
-          <option value="bell">bell</option>
-          <option value="duo">duo</option>
-          <option value="seaboard">seaboard</option>
-          <option value="keys">keys</option>
-          <option value="piano">piano</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="perc-voice">Perc Voice</label>
-        <select id="perc-voice" aria-label="Perc Voice" data-state="tom">
-          <option value="tom" selected>tom</option>
-          <option value="metal">metal</option>
-          <option value="rim">rim</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="pad-toggle">Pad Layer</label>
-        <button id="pad-toggle" class="toggle-btn" type="button" aria-label="Pad Layer" data-state="off" aria-pressed="false">Pad</button>
-      </div>
-
-      <div class="control">
-        <label for="pad-voice">Pad Voice</label>
-        <select id="pad-voice" aria-label="Pad Voice" data-state="warm">
-          <option value="warm" selected>warm</option>
-          <option value="glass">glass</option>
-          <option value="strings">strings</option>
-          <option value="dark">dark</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="lead-octave">Lead Octave</label>
-        <select id="lead-octave" aria-label="Lead Octave">
-          <option value="3">3</option>
-          <option value="4" selected>4</option>
-          <option value="5">5</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="lead-notelen">Lead Note Length</label>
-        <select id="lead-notelen" aria-label="Lead Note Length">
-          <option value="16n" selected>16n</option>
-          <option value="8n">8n</option>
-          <option value="4n">4n</option>
-          <option value="2n">2n</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="glide-amount">Glide (seconds)</label>
-        <input type="range" id="glide-amount" aria-label="Glide (seconds)" min="0" max="0.3" step="0.005" value="0">
-        <output id="glide-amount-value" class="val" for="glide-amount">0</output>
-      </div>
-
-      <div class="control">
-        <label for="chorus-wet">Chorus (0 to 1)</label>
-        <input type="range" id="chorus-wet" aria-label="Chorus (0 to 1)" min="0" max="1" step="0.01" value="0">
-        <output id="chorus-wet-value" class="val" for="chorus-wet">0</output>
-      </div>
-
-    </div>
-  </section>
-
-  <section id="song-panel">
-    <h2>Song</h2>
-    <div class="song-row">
-      <textarea id="song-input" rows="5" aria-label="Song JSON" spellcheck="false"
-        placeholder='[{"name":"intro","scene":"A","bars":8},{"name":"drop","scene":"B","bars":16,"root":"F","ramps":{"filterCutoff":{"to":9000,"bars":4}}}]'></textarea>
-      <button id="song-apply-btn" type="button" aria-label="Apply song">Apply</button>
-    </div>
-    <div class="song-readout">
-      <span class="tb-label">Now</span>
-      <button id="song-status" class="status-btn" type="button" aria-label="Song status" data-state="idle">&mdash;</button>
-    </div>
-    <p class="hint">Sections: { name, scene, bars, root?, scale?, overrides?, ramps? }. Set Mode to "song" and press Play. The composer tool is the primary editor; this textarea is the manual escape hatch.</p>
-  </section>
-
-  <section id="llm-config-panel">
-    <h2>LLM Config</h2>
-    <div class="llm-grid">
-      <div class="control">
-        <label for="llm-base-url">Base URL</label>
-        <input type="text" id="llm-base-url" aria-label="LLM Base URL" placeholder="https://api.openai.com/v1">
-      </div>
-      <div class="control">
-        <label for="llm-api-key">API Key</label>
-        <input type="password" id="llm-api-key" aria-label="LLM API Key">
-      </div>
-      <div class="control">
-        <label for="llm-model">Model ID</label>
-        <input type="text" id="llm-model" aria-label="LLM Model ID" placeholder="gpt-4o-mini">
-      </div>
-      <div class="control">
-        <label for="mode-select">DJ Mode</label>
-        <select id="mode-select" aria-label="DJ Mode">
-          <option value="composer" selected>Composer (one-shot, fast)</option>
-          <option value="theater">Theater (watch it click)</option>
-        </select>
-      </div>
-      <div class="control control-btn">
-        <button id="connect-btn" aria-label="Connect LLM">Connect</button>
-      </div>
-    </div>
-    <p class="hint">Endpoint must allow browser CORS. Your API key is saved in this browser's localStorage so it survives reloads &mdash; do not use on shared machines. <strong>Composer</strong> mode applies the whole composition in one tool call (fast, no overlay); <strong>Theater</strong> mode shows the agent clicking every control, with its floating panel and page mask visible.</p>
-  </section>
-
-  <section id="chat-panel">
-    <h2>Talk to the DJ</h2>
-    <div class="chat-row">
-      <textarea id="instruction-input" rows="2" aria-label="Instruction for the DJ agent" placeholder="Tell the DJ what to play&#8230;"></textarea>
-      <button id="improve-btn" type="button" aria-label="Improve Prompt">Improve</button>
-      <button id="send-btn" aria-label="Send Instruction" disabled>Send</button>
-    </div>
-    <p class="hint">Rough idea? Type a genre or vibe (e.g. "djent") and hit <strong>Improve</strong> &mdash; it rewrites your ask into a detailed brief that uses the full machine (arrangement, dynamics, sweeps). Review, tweak, then Send.</p>
-  </section>
-
-  <section id="status-panel">
-    <h2>Agent Status</h2>
-    <div class="status-cards">
-      <div class="status-card">
-        <h3>Previous</h3>
-        <div id="status-eval">&mdash;</div>
-      </div>
-      <div class="status-card">
-        <h3>Memory</h3>
-        <div id="status-memory">&mdash;</div>
-      </div>
-      <div class="status-card">
-        <h3>Next goal</h3>
-        <div id="status-goal">&mdash;</div>
-      </div>
-    </div>
-    <div id="agent-log"></div>
-  </section>
+  </div>
 
   <script src="https://unpkg.com/tone@15.1.22/build/Tone.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/page-agent@1.9.0/dist/iife/page-agent.demo.js?autoInit=false"></script>
   <script src="synth.js"></script>
+  <script src="ui-hardware.js"></script>
   <script src="agent-config.js"></script>
 </body>
 </html>
