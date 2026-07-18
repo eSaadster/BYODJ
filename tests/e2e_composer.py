@@ -23,9 +23,11 @@ PORT = 8766
 requests_seen = []
 
 # Legacy payload shape (back-compat pin): top-level 16-step pattern rows must
-# still apply — they land on scene A.
+# still apply — they land on scene A. leadStyle is included because clearFirst
+# + melodic rows without one is now rejected (the voice must be deliberate).
 COMPOSITION_ARGS = {
     "clearFirst": True,
+    "leadStyle": "saw",
     "tempo": 128,
     "scale": "phrygian",
     "root": "A",
@@ -208,6 +210,37 @@ def main():
         if long_labels:
             failures.append("aria-labels over 20-char budget: " + " | ".join(long_labels))
 
+        # 0c. lead-style defaults to keys (the neutral fallback voice), with
+        # the new non-saw voices present as options.
+        if page.input_value("#lead-style") != "keys":
+            failures.append("lead-style load default != keys: " + page.input_value("#lead-style"))
+        if page.get_attribute("#lead-style", "data-state") != "keys":
+            failures.append("lead-style data-state default != keys")
+        lead_opts = page.evaluate(
+            "() => [...document.getElementById('lead-style').options].map(o => o.value)")
+        for opt in ("organ", "flute"):
+            if opt not in lead_opts:
+                failures.append(f"lead-style missing new voice option {opt!r}: {lead_opts}")
+
+        # 0d. leadStyle guard: clearFirst + melodic rows but no leadStyle is
+        # REJECTED before anything is applied; drums-only clearFirst passes.
+        guard = page.evaluate(
+            "() => window.BYODJ_SYNTH.applyComposition("
+            "{clearFirst: true, tempo: 99, pattern: {leadRoot: [0, 4]}})")
+        if guard.get("ok") is not False or "leadStyle" not in guard.get("error", ""):
+            failures.append("clearFirst+melody without leadStyle not rejected: " + json.dumps(guard)[:200])
+        if page.input_value("#tempo-slider") != "120":
+            failures.append("rejected composition still mutated tempo: " + page.input_value("#tempo-slider"))
+        if page.get_attribute("#cell-r5-s0", "data-state") != "off":
+            failures.append("rejected composition still wrote lead cells")
+        drums_only = page.evaluate(
+            "() => { const r = window.BYODJ_SYNTH.applyComposition("
+            "{clearFirst: true, play: false, pattern: {kick: [0]}});"
+            " return {ok: r.ok, warnings: r.warnings}; }")
+        if drums_only.get("ok") is not True:
+            failures.append("drums-only clearFirst should pass the guard: " + json.dumps(drums_only)[:200])
+        page.evaluate("() => window.BYODJ_SYNTH.clearAll()")
+
         # connect in composer mode (default)
         page.fill("#llm-base-url", "https://mockllm.test/v1")
         page.fill("#llm-api-key", "sk-mock")
@@ -314,6 +347,10 @@ def main():
             failures.append("dj-filter value attribute not -40: " + str(page.get_attribute("#dj-filter", "value")))
         if page.get_attribute("#level-lead", "value") != "-6":
             failures.append("level-lead value attribute not -6: " + str(page.get_attribute("#level-lead", "value")))
+
+        # 2d-i. deliberate leadStyle from the payload landed (saw chosen on purpose)
+        if page.input_value("#lead-style") != "saw":
+            failures.append("lead-style not saw after payload: " + page.input_value("#lead-style"))
 
         # 2d. DJ-expansion: mute toggle landed from the tool call
         if page.get_attribute("#mute-bass", "data-state") != "on":

@@ -134,6 +134,7 @@
   var kick, bass, snare, hatClosed, hatOpen, poly;
   var leadPlucks = [], leadPluckIdx = 0, leadBell, leadDuo, padSynth, padFilter;
   var leadSea, leadKeys, seaVibrato, keysChorus, keysTremolo, keysComp;
+  var leadOrgan, leadFlute, fluteVibrato;
   var pianoSampler, pianoReverb;    // sampled grand (HTTP-only) + its own space
   var percTom, percMetal, percRim, samplePlayers;
   var filter, dist, delay, pingpong, reverb;
@@ -146,7 +147,9 @@
   // Performance / sound-design state (read at trigger time)
   var pumpAmount = 0;
   var bassStyle = 'sub';     // 'sub' | 'saw' | 'acid'
-  var leadStyle = 'saw';     // 'saw' | 'pluck' | 'bell' | 'duo'
+  // Default lead voice: 'keys' (warm Rhodes) — a safe, pleasant fallback
+  // when nobody picked a voice. 'saw' must now be chosen deliberately.
+  var leadStyle = 'keys';    // 'saw' | 'pluck' | 'bell' | 'duo' | 'seaboard' | 'keys' | 'piano' | 'organ' | 'flute'
   var delayStyle = 'feedback';
   var padOn = false;
   var percVoice = 'tom';
@@ -737,9 +740,13 @@
       envelope: { attack: 0.001, decay: 0.3, sustain: 0 }
     });
 
+    // The classic filter-swept saw poly. Softened attack + shorter release
+    // than the original 0.01/0.8 — that combo read as a nasal string/violin
+    // pad once notes overlapped. Keep the env slider defaults in index.html
+    // in sync with these (resetSoundControls re-applies them).
     poly = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'sawtooth' },
-      envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.8 }
+      envelope: { attack: 0.03, decay: 0.25, sustain: 0.45, release: 0.5 }
     });
     poly.maxPolyphony = 24;
     poly.volume.value = -6;
@@ -811,6 +818,25 @@
     keysChorus.wet.value = 0.5;
     keysTremolo = new Tone.Tremolo(4.5, 0.18).start();
     keysComp = new Tone.Compressor({ threshold: -20, ratio: 2.5, attack: 0.005, release: 0.15 });
+
+    // "Organ" — slightly detuned squares, instant attack, full sustain:
+    // tonewheel/garage stabs and held chords. A genuinely non-saw voice.
+    leadOrgan = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'fatsquare', count: 2, spread: 12 },
+      envelope: { attack: 0.008, decay: 0.08, sustain: 0.9, release: 0.2 },
+      volume: -10
+    });
+    leadOrgan.maxPolyphony = 12;
+
+    // "Flute" — soft triangle with a gentle vibrato: breathy, mellow melodic
+    // lines. The non-saw choice for gentle/organic leads.
+    leadFlute = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.09, decay: 0.25, sustain: 0.8, release: 0.5 },
+      volume: -8
+    });
+    leadFlute.maxPolyphony = 8;
+    fluteVibrato = new Tone.Vibrato(4.5, 0.12);
 
     // "Piano" — a real multi-sampled grand (Salamander, the set the Tone.js
     // piano uses). HTTP-only like the sampled kit; falls back to the FM keys
@@ -938,6 +964,8 @@
     for (var lpi = 0; lpi < leadPlucks.length; lpi++) leadPlucks[lpi].chain(filter);
     leadDuo.chain(filter);
     leadSea.chain(seaVibrato, filter);
+    leadOrgan.chain(filter);
+    leadFlute.chain(fluteVibrato, filter);
     // Bright voices skip the resonant lead low-pass (which muffles their
     // character) and land post-filter so they still pick up chorus/delay/
     // reverb from the shared lead FX tail.
@@ -1080,6 +1108,11 @@
       var drawBar = Math.floor(st / 16);
       var drawStatus = computeSongStatus();
       Tone.getDraw().schedule(function () {
+        // Stale-tick guard: this callback can still fire if it was already
+        // in the rAF queue when stop() ran (Draw.cancel only clears the
+        // timeline, not an already-requested frame) — never let it overwrite
+        // the stopped state (idle status, cleared playhead).
+        if (!api.isPlaying()) return;
         // Playhead only when the playing bar of the playing scene is visible.
         if (drawScene === editScene && drawBar === editBar) {
           highlightColumn(st % 16);
@@ -1412,6 +1445,10 @@
       leadSea.triggerAttackRelease(note, dur, time, vel);
     } else if (leadStyle === 'keys') {
       leadKeys.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'organ') {
+      leadOrgan.triggerAttackRelease(note, dur, time, vel);
+    } else if (leadStyle === 'flute') {
+      leadFlute.triggerAttackRelease(note, dur, time, vel);
     } else if (leadStyle === 'piano') {
       var plen = (dur === '16n') ? '8n' : dur;
       if (pianoSampler && pianoSampler.loaded) {
@@ -1436,6 +1473,10 @@
       leadSea.triggerAttack(note, time, vel);
     } else if (leadStyle === 'keys') {
       leadKeys.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'organ') {
+      leadOrgan.triggerAttack(note, time, vel);
+    } else if (leadStyle === 'flute') {
+      leadFlute.triggerAttack(note, time, vel);
     } else if (leadStyle === 'piano') {
       if (pianoSampler && pianoSampler.loaded) {
         pianoSampler.triggerAttack(note, time, vel);
@@ -1459,6 +1500,10 @@
       leadSea.triggerRelease(note);
     } else if (leadStyle === 'keys') {
       leadKeys.triggerRelease(note);
+    } else if (leadStyle === 'organ') {
+      leadOrgan.triggerRelease(note);
+    } else if (leadStyle === 'flute') {
+      leadFlute.triggerRelease(note);
     } else if (leadStyle === 'piano') {
       if (pianoSampler && pianoSampler.loaded) pianoSampler.triggerRelease(note);
       else leadKeys.triggerRelease(note);
@@ -1545,6 +1590,8 @@
       if (leadDuo) leadDuo.releaseAll();
       if (leadSea) leadSea.releaseAll();
       if (leadKeys) leadKeys.releaseAll();
+      if (leadOrgan) leadOrgan.releaseAll();
+      if (leadFlute) leadFlute.releaseAll();
       if (pianoSampler && pianoSampler.loaded) pianoSampler.releaseAll();
       clearPlayhead();
       // Freeze in-flight section ramps at their current interpolated value.
@@ -2070,7 +2117,8 @@
         }
       }
       if (name === 'saw' || name === 'pluck' || name === 'bell' || name === 'duo' ||
-          name === 'seaboard' || name === 'keys' || name === 'piano') leadStyle = name;
+          name === 'seaboard' || name === 'keys' || name === 'piano' ||
+          name === 'organ' || name === 'flute') leadStyle = name;
     },
 
     setPadVoice: function (name) {
@@ -2276,6 +2324,45 @@
       }
       var noPlay = !!(internalOpts && internalOpts.noPlay);
       var noPattern = !!(internalOpts && internalOpts.noPattern);
+
+      // Lead-voice guard: clearFirst resets every sound control to defaults,
+      // so a new piece with melodic rows but no leadStyle means the caller
+      // forgot to choose a voice and the track silently falls back to the
+      // default. Reject BEFORE applying anything (clearAll is destructive)
+      // so the LLM re-emits with a deliberate choice. Tweaks (no clearFirst)
+      // and drums-only compositions are unaffected.
+      if (!noPattern && comp.clearFirst === true && comp.leadStyle === undefined) {
+        var MELODIC_ROWS = ['leadRoot', 'leadThird', 'leadFifth', 'leadSeventh', 'leadHigh'];
+        var patternObjs = [];
+        if (comp.patterns && typeof comp.patterns === 'object' && !Array.isArray(comp.patterns)) {
+          for (var pk in comp.patterns) {
+            if (comp.patterns.hasOwnProperty(pk)) patternObjs.push(comp.patterns[pk]);
+          }
+        }
+        if (comp.pattern && typeof comp.pattern === 'object' && !Array.isArray(comp.pattern)) {
+          patternObjs.push(comp.pattern);
+        }
+        var hasMelody = false;
+        for (var poi = 0; poi < patternObjs.length && !hasMelody; poi++) {
+          var po = patternObjs[poi];
+          if (!po || typeof po !== 'object') continue;
+          for (var mri = 0; mri < MELODIC_ROWS.length; mri++) {
+            var mrow = po[MELODIC_ROWS[mri]];
+            if (Array.isArray(mrow) && mrow.length > 0) { hasMelody = true; break; }
+          }
+        }
+        if (hasMelody) {
+          return {
+            ok: false,
+            error: 'Missing leadStyle: clearFirst resets the lead voice, so a new melodic composition MUST choose one deliberately. ' +
+              'Pick the voice that fits the mood and resend the SAME composition with leadStyle set: ' +
+              'piano (real grand: ballads, house stabs, emotional), keys (warm Rhodes: lofi/jazz/neo-soul), ' +
+              'organ (tonewheel stabs/held chords: garage, gospel, house), flute (soft breathy triangle: gentle/organic), ' +
+              'bell (glassy FM: sparkle/ambient), pluck (koto/arp), duo (thick detuned), ' +
+              'seaboard (expressive cinematic saws), saw (aggressive filter-swept EDM/techno only).'
+          };
+        }
+      }
 
       var applied = [];
       var warnings = [];

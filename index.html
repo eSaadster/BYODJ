@@ -200,29 +200,29 @@
               <div class="control">
                 <label for="env-attack">Envelope Attack (seconds)</label>
                 <div class="control-row">
-                  <input type="range" id="env-attack" aria-label="Env Attack (sec)" min="0.001" max="2" step="0.001" value="0.01">
-                  <output id="env-attack-value" class="val" for="env-attack">0.01</output>
+                  <input type="range" id="env-attack" aria-label="Env Attack (sec)" min="0.001" max="2" step="0.001" value="0.03">
+                  <output id="env-attack-value" class="val" for="env-attack">0.03</output>
                 </div>
               </div>
               <div class="control">
                 <label for="env-decay">Envelope Decay (seconds)</label>
                 <div class="control-row">
-                  <input type="range" id="env-decay" aria-label="Env Decay (sec)" min="0.01" max="2" step="0.01" value="0.2">
-                  <output id="env-decay-value" class="val" for="env-decay">0.2</output>
+                  <input type="range" id="env-decay" aria-label="Env Decay (sec)" min="0.01" max="2" step="0.01" value="0.25">
+                  <output id="env-decay-value" class="val" for="env-decay">0.25</output>
                 </div>
               </div>
               <div class="control">
                 <label for="env-sustain">Envelope Sustain (0 to 1)</label>
                 <div class="control-row">
-                  <input type="range" id="env-sustain" aria-label="Env Sustain (0-1)" min="0" max="1" step="0.01" value="0.5">
-                  <output id="env-sustain-value" class="val" for="env-sustain">0.5</output>
+                  <input type="range" id="env-sustain" aria-label="Env Sustain (0-1)" min="0" max="1" step="0.01" value="0.45">
+                  <output id="env-sustain-value" class="val" for="env-sustain">0.45</output>
                 </div>
               </div>
               <div class="control">
                 <label for="env-release">Envelope Release (seconds)</label>
                 <div class="control-row">
-                  <input type="range" id="env-release" aria-label="Env Release (sec)" min="0.01" max="4" step="0.01" value="0.8">
-                  <output id="env-release-value" class="val" for="env-release">0.8</output>
+                  <input type="range" id="env-release" aria-label="Env Release (sec)" min="0.01" max="4" step="0.01" value="0.5">
+                  <output id="env-release-value" class="val" for="env-release">0.5</output>
                 </div>
               </div>
             </div>
@@ -289,14 +289,16 @@
             </div>
             <div class="control">
               <label for="lead-style">Lead Style</label>
-              <select id="lead-style" aria-label="Lead Style" data-state="saw">
-                <option value="saw" selected>saw</option>
+              <select id="lead-style" aria-label="Lead Style" data-state="keys">
+                <option value="saw">saw</option>
                 <option value="pluck">pluck</option>
                 <option value="bell">bell</option>
                 <option value="duo">duo</option>
                 <option value="seaboard">seaboard</option>
-                <option value="keys">keys</option>
+                <option value="keys" selected>keys</option>
                 <option value="piano">piano</option>
+                <option value="organ">organ</option>
+                <option value="flute">flute</option>
               </select>
             </div>
             <div class="control">
