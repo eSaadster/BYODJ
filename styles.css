@@ -919,9 +919,17 @@ button:disabled {
 
 .llm-grid {
   display: grid;
-  grid-template-columns: 2fr 2fr 1.5fr auto;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
   align-items: end;
+}
+
+.llm-grid .control input[type="text"],
+.llm-grid .control input[type="password"],
+.llm-grid .control select {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .control-btn { justify-content: flex-end; }
@@ -1035,7 +1043,7 @@ button:disabled {
 
   .header-status { justify-content: flex-start; }
 
-  .llm-grid { grid-template-columns: 1fr 1fr; }
+  .llm-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .status-cards { grid-template-columns: 1fr; }
   .mixer-grid { grid-template-columns: repeat(2, 1fr); }
 
